@@ -50,7 +50,7 @@ jobs:
         poetry run pre-commit run --all-files
 
     - name: Type checking with mypy
-      run: poetry run mypy app/
+      run: poetry run mypy app/ --exclude tests/
 
     - name: Security check with bandit
       run: poetry run bandit -r app/ -f json -o bandit-report.json || true  # Allow failures for reporting

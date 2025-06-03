@@ -2,16 +2,16 @@
 import pytest
 import torch
 import numpy as np
+from typing import Dict, Any, List
 
 
 class TestMLBenchmarks:
     """Performance benchmark tests for ML models."""
 
     @pytest.mark.benchmark
-    def test_linear_model_benchmark(self, benchmark):
+    def test_linear_model_benchmark(self, benchmark: Any) -> None:
         """Benchmark linear model performance."""
-
-        def create_and_run_model():
+        def create_and_run_model() -> torch.Tensor:
             model = torch.nn.Linear(100, 50)
             x = torch.randn(1000, 100)
             return model(x)
@@ -20,10 +20,9 @@ class TestMLBenchmarks:
         assert result.shape == (1000, 50)
 
     @pytest.mark.benchmark
-    def test_tensor_operations_benchmark(self, benchmark):
+    def test_tensor_operations_benchmark(self, benchmark: Any) -> None:
         """Benchmark basic tensor operations."""
-
-        def tensor_operations():
+        def tensor_operations() -> torch.Tensor:
             x = torch.randn(1000, 1000)
             y = torch.randn(1000, 1000)
             return torch.matmul(x, y)
@@ -32,10 +31,9 @@ class TestMLBenchmarks:
         assert result.shape == (1000, 1000)
 
     @pytest.mark.benchmark
-    def test_numpy_pytorch_conversion_benchmark(self, benchmark):
+    def test_numpy_pytorch_conversion_benchmark(self, benchmark: Any) -> None:
         """Benchmark NumPy to PyTorch conversion."""
-
-        def convert_data():
+        def convert_data() -> torch.Tensor:
             np_data = np.random.randn(1000, 100)
             torch_data = torch.from_numpy(np_data)
             return torch_data.float()
@@ -49,10 +47,9 @@ class TestLogProcessingBenchmarks:
     """Benchmark tests for log processing."""
 
     @pytest.mark.benchmark
-    def test_log_parsing_benchmark(self, benchmark, sample_log_data):
+    def test_log_parsing_benchmark(self, benchmark: Any, sample_log_data: Dict[str, Any]) -> None:
         """Benchmark log parsing performance."""
-
-        def parse_logs():
+        def parse_logs() -> List[Dict[str, Any]]:
             # Simulate log parsing
             logs = [sample_log_data.copy() for _ in range(1000)]
             parsed = []
