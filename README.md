@@ -18,7 +18,7 @@ DevOps teams spend **60% of their time** on manual log analysis and incident res
 
 **What if an AI could:**
 - 🔍 Automatically classify logs with 94% accuracy
-- 🚨 Detect anomalies before they become critical incidents  
+- 🚨 Detect anomalies before they become critical incidents
 - 🤖 Provide intelligent root cause analysis in seconds
 - ⚡ Reduce Mean Time To Recovery (MTTR) from 45 minutes to 8 minutes
 - 📈 Learn from every incident to prevent future occurrences
@@ -65,7 +65,7 @@ Built with production-ready patterns and enterprise-grade reliability:
 ### 🧠 ML Models
 
 - **Log Classifier**: LSTM neural network for categorizing log entries
-- **Anomaly Detector**: Autoencoder for identifying unusual system behavior  
+- **Anomaly Detector**: Autoencoder for identifying unusual system behavior
 - **Pattern Recognition**: Advanced NLP for root cause correlation
 - **Prediction Engine**: Time series forecasting for proactive alerts
 
@@ -81,7 +81,7 @@ Built with production-ready patterns and enterprise-grade reliability:
 
 **Architecture Patterns:**
 - **Domain-Driven Design** with clean architecture
-- **Protocol-based dependency injection** for testability  
+- **Protocol-based dependency injection** for testability
 - **Event-driven architecture** for scalability
 - **CQRS pattern** for read/write optimization
 - **Circuit breaker** pattern for resilience
@@ -214,7 +214,7 @@ poetry run pytest tests/ml/          # ML model tests
 ## 📖 Documentation
 
 - [📋 Architecture Overview](./docs/ARCHITECTURE.md)
-- [🚀 Deployment Guide](./docs/DEPLOYMENT.md)  
+- [🚀 Deployment Guide](./docs/DEPLOYMENT.md)
 - [🔧 Development Setup](./docs/DEVELOPMENT.md)
 - [🤖 ML Models Documentation](./docs/ML_MODELS.md)
 - [🔌 API Reference](./docs/API.md)
@@ -256,17 +256,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact
 
-**Author**: Oleksandr Gubanov 
-**Email**: future.htm@gmail.com  
-**LinkedIn**: (https://www.linkedin.com/in/oleksandr-gubanov-670a63252/)  
+**Author**: Oleksandr Gubanov
+**Email**: future.htm@gmail.com
+**LinkedIn**: (https://www.linkedin.com/in/oleksandr-gubanov-670a63252/)
 
 
 ---
 
-⭐ **Star this repository** if you find it interesting!  
-🐛 **Report issues** to help improve the project  
+⭐ **Star this repository** if you find it interesting!
+🐛 **Report issues** to help improve the project
 🤝 **Contribute** to make DevOps more intelligent
 
 ---
-
 *Built with ❤️ and lots of ☕ by Gubanov_Alex*
