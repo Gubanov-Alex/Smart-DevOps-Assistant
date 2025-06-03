@@ -45,7 +45,7 @@ jobs:
     - name: Install project
       run: poetry install --no-interaction --no-root
 
-    # Убираем pre-commit проверку, т.к. она уже исправила файлы
+
     - name: Check code formatting
       run: |
         poetry run black --check app/ tests/ || {
@@ -74,7 +74,7 @@ jobs:
         path: bandit-report.json
         retention-days: 7
 
-  # Unit Tests - исправляем coverage config
+
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -135,13 +135,12 @@ jobs:
     - name: Install project
       run: poetry install --no-interaction
 
-    # Запуск тестов с исправленной coverage конфигурацией
+
     - name: Run unit tests
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
         ENVIRONMENT: testing
-        # Переопределяем coverage настройки через env
         COVERAGE_PROCESS_START: .coveragerc
       run: |
         # Создаем временный .coveragerc без gevent
@@ -197,7 +196,7 @@ jobs:
         path: htmlcov/
         retention-days: 7
 
-  # Остальные job'ы остаются без изменений...
+    # ML Model Tests
   ml-tests:
     name: ML Model Tests
     runs-on: ubuntu-latest
