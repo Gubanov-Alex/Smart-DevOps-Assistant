@@ -9,6 +9,7 @@ homepage = "https://github.com/Gubanov-Alex/Smart-DevOps-Assistant"
 repository = "https://github.com/Gubanov-Alex/Smart-DevOps-Assistant.git"
 documentation = "https://github.com/Gubanov-Alex//Smart-DevOps-Assistant/docs"
 keywords = ["devops", "machine-learning", "fastapi", "pytorch", "anomaly-detection", "ai-assistant"]
+packages = [{include = "app"}]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -58,9 +59,8 @@ bandit = "^1.7.5"
 pre-commit = "^3.6.0"
 httpx = "^0.25.2"
 factory-boy = "^3.3.0"
-psutil = "^5.9.6"
-gevent = "^23.9.1"
 types-redis = "^4.6.0"
+pydocstyle = "^6.3.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"

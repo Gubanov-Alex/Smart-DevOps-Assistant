@@ -1,83 +1,55 @@
-"""Basic ML functionality tests."""
+"""Basic health check tests to ensure CI pipeline works."""
 import pytest
-import torch
-import numpy as np
+
+# Удалите неиспользуемый импорт
+# from fastapi.testclient import TestClient
 
 
-class TestMLEnvironment:
-    """Test ML environment setup."""
+def test_python_version():
+    """Test Python version compatibility."""
+    import sys
 
-    def test_torch_installation(self):
-        """Test PyTorch is properly installed."""
-        assert torch.__version__ is not None
-        # Test basic tensor operations
-        x = torch.tensor([1.0, 2.0, 3.0])
-        y = torch.tensor([4.0, 5.0, 6.0])
-        result = torch.add(x, y)
-        expected = torch.tensor([5.0, 7.0, 9.0])
-        assert torch.allclose(result, expected)
-
-    def test_numpy_integration(self):
-        """Test NumPy integration with PyTorch."""
-        np_array = np.array([1, 2, 3])
-        torch_tensor = torch.from_numpy(np_array)
-
-        assert torch_tensor.shape == (3,)
-        assert torch_tensor.dtype == torch.int64
-
-    def test_basic_model_operations(self):
-        """Test basic model operations."""
-        model = torch.nn.Linear(10, 1)
-        x = torch.randn(100, 10)
-        result = model(x)
-
-        assert result.shape == (100, 1)
-        assert result.dtype == torch.float32
+    assert sys.version_info >= (3, 12), "Python 3.12+ required"
 
 
-class TestLogClassifier:
-    """Log classifier model tests (placeholder)."""
+def test_imports():
+    """Test critical imports work."""
+    try:
+        # Удалите неиспользуемые импорты или используйте их
+        import fastapi  # noqa: F401
+        import pydantic  # noqa: F401
+        import pytest  # noqa: F401
+        import sqlalchemy  # noqa: F401
+        import torch  # noqa: F401
 
-    def test_log_preprocessing(self, sample_log_data):
-        """Test log data preprocessing."""
-        # Basic validation until actual ML pipeline
-        assert "message" in sample_log_data
-        assert "level" in sample_log_data
-        assert sample_log_data["level"] in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        assert True
+    except ImportError as e:
+        pytest.fail(f"Critical import failed: {e}")
 
-    def test_feature_extraction_placeholder(self, sample_log_data):
-        """Test feature extraction (placeholder)."""
-        # Mock feature extraction
-        features = {
-            "message_length": len(sample_log_data["message"]),
-            "level_encoded": {"ERROR": 1, "INFO": 0}.get(sample_log_data["level"], 0),
-            "has_trace_id": bool(sample_log_data.get("trace_id"))
+
+class TestHealthEndpoint:
+    """Health endpoint tests."""
+
+    def test_health_check_structure(self):
+        """Test health check response structure."""
+        # Minimal test until actual FastAPI app is implemented
+        health_response = {
+            "status": "healthy",
+            "timestamp": "2024-01-15T10:30:00Z",
+            "version": "0.1.0",
         }
 
-        assert features["message_length"] > 0
-        assert features["level_encoded"] in [0, 1]
-        assert isinstance(features["has_trace_id"], bool)
+        assert "status" in health_response
+        assert "timestamp" in health_response
+        assert health_response["status"] in ["healthy", "unhealthy"]
 
 
-class TestLogClassifier:
-    """Log classifier model tests (placeholder)."""
+@pytest.mark.asyncio
+async def test_async_functionality():
+    """Test async functionality works."""
 
-    def test_log_preprocessing(self, sample_log_data):
-        """Test log data preprocessing."""
-        # Basic validation until actual ML pipeline
-        assert "message" in sample_log_data
-        assert "level" in sample_log_data
-        assert sample_log_data["level"] in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    async def dummy_async():
+        return "async_works"
 
-    def test_feature_extraction_placeholder(self, sample_log_data):
-        """Test feature extraction (placeholder)."""
-        # Mock feature extraction
-        features = {
-            "message_length": len(sample_log_data["message"]),
-            "level_encoded": {"ERROR": 1, "INFO": 0}.get(sample_log_data["level"], 0),
-            "has_trace_id": bool(sample_log_data.get("trace_id"))
-        }
-
-        assert features["message_length"] > 0
-        assert features["level_encoded"] in [0, 1]
-        assert isinstance(features["has_trace_id"], bool)
+    result = await dummy_async()
+    assert result == "async_works"

@@ -1,8 +1,9 @@
 """ML model performance benchmark tests."""
+from typing import Any, Dict, List
+
+import numpy as np
 import pytest
 import torch
-import numpy as np
-from typing import Dict, Any, List
 
 
 class TestMLBenchmarks:
@@ -11,6 +12,7 @@ class TestMLBenchmarks:
     @pytest.mark.benchmark
     def test_linear_model_benchmark(self, benchmark: Any) -> None:
         """Benchmark linear model performance."""
+
         def create_and_run_model() -> torch.Tensor:
             model = torch.nn.Linear(100, 50)
             x = torch.randn(1000, 100)
@@ -22,6 +24,7 @@ class TestMLBenchmarks:
     @pytest.mark.benchmark
     def test_tensor_operations_benchmark(self, benchmark: Any) -> None:
         """Benchmark basic tensor operations."""
+
         def tensor_operations() -> torch.Tensor:
             x = torch.randn(1000, 1000)
             y = torch.randn(1000, 1000)
@@ -33,6 +36,7 @@ class TestMLBenchmarks:
     @pytest.mark.benchmark
     def test_numpy_pytorch_conversion_benchmark(self, benchmark: Any) -> None:
         """Benchmark NumPy to PyTorch conversion."""
+
         def convert_data() -> torch.Tensor:
             np_data = np.random.randn(1000, 100)
             torch_data = torch.from_numpy(np_data)
@@ -49,6 +53,7 @@ class TestLogProcessingBenchmarks:
     @pytest.mark.benchmark
     def test_log_parsing_benchmark(self, benchmark: Any, sample_log_data: Dict[str, Any]) -> None:
         """Benchmark log parsing performance."""
+
         def parse_logs() -> List[Dict[str, Any]]:
             # Simulate log parsing
             logs = [sample_log_data.copy() for _ in range(1000)]
@@ -57,7 +62,7 @@ class TestLogProcessingBenchmarks:
                 features = {
                     "length": len(log["message"]),
                     "level": log["level"],
-                    "has_trace": bool(log.get("trace_id"))
+                    "has_trace": bool(log.get("trace_id")),
                 }
                 parsed.append(features)
             return parsed

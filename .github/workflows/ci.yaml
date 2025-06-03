@@ -47,9 +47,9 @@ jobs:
     - name: Run pre-commit hooks
       run: |
         poetry run pre-commit install
-        poetry run pre-commit run --all-files
+        poetry run pre-commit run --all-files --show-diff-on-failure
 
-    - name: Type checking with mypy
+    - name: Type checking with mypy (app only)
       run: poetry run mypy app/ --exclude tests/
 
     - name: Security check with bandit

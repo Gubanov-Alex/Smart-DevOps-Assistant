@@ -1,9 +1,10 @@
 """Pytest configuration and shared fixtures."""
 import asyncio
-import pytest
-import pytest_asyncio
-from typing import AsyncGenerator, Generator
+from typing import Generator
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
@@ -12,15 +13,18 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     yield loop
     loop.close()
 
+
 @pytest.fixture
 async def mock_db_session() -> AsyncMock:
     """Mock database session."""
     return AsyncMock()
 
+
 @pytest.fixture
 def mock_redis() -> MagicMock:
     """Mock Redis client."""
     return MagicMock()
+
 
 @pytest.fixture
 def sample_log_data() -> dict:
@@ -30,5 +34,5 @@ def sample_log_data() -> dict:
         "level": "ERROR",
         "message": "Database connection failed",
         "service": "api",
-        "trace_id": "abc123"
+        "trace_id": "abc123",
     }

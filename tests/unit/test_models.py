@@ -1,6 +1,4 @@
 """Pydantic models tests."""
-import pytest
-from pydantic import ValidationError
 
 
 class TestLogModel:
