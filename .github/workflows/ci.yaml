@@ -42,12 +42,16 @@ jobs:
       run: poetry install --no-interaction --no-root
 
     - name: Install project
-      run: poetry install --no-interaction
+      run: poetry install --no-interaction --no-root
 
     - name: Run pre-commit hooks
       run: |
         poetry run pre-commit install
-        poetry run pre-commit run --all-files --show-diff-on-failure
+        poetry run pre-commit run --all-files || {
+          echo "Pre-commit made changes. Please commit them."
+          git diff
+          exit 1
+        }
 
     - name: Type checking with mypy (app only)
       run: poetry run mypy app/ --exclude tests/
