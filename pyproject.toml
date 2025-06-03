@@ -121,19 +121,41 @@ module = [
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "-ra -q --strict-markers --strict-config"
+minversion = "7.0"
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+    "--maxfail=5",
+    "--durations=10"
+]
 testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
 filterwarnings = [
     "error",
     "ignore::UserWarning",
     "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "ml: marks tests as ML model tests",
+    "benchmark: marks tests as benchmark tests",
+    "asyncio: marks tests as async tests",
+]
+asyncio_mode = "auto"
+# Minimum test discovery
+collect_ignore = [
+    "setup.py",
+    "migrations/",
+    "build/",
+    "dist/"
 ]
 
 [tool.coverage.run]
@@ -144,12 +166,16 @@ omit = [
     "*/conftest.py",
     "*/__init__.py",
     "*/migrations/*",
+    "app/main.py",  # Entry point, minimal logic
 ]
+parallel = true
+concurrency = ["thread", "gevent"]
 
 [tool.coverage.report]
 precision = 2
 show_missing = true
 skip_covered = false
+skip_empty = true
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -157,7 +183,15 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
 ]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
 
 [tool.bandit]
 exclude_dirs = ["tests", "migrations"]
