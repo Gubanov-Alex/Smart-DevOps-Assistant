@@ -9,7 +9,6 @@ homepage = "https://github.com/Gubanov-Alex/Smart-DevOps-Assistant"
 repository = "https://github.com/Gubanov-Alex/Smart-DevOps-Assistant.git"
 documentation = "https://github.com/Gubanov-Alex//Smart-DevOps-Assistant/docs"
 keywords = ["devops", "machine-learning", "fastapi", "pytorch", "anomaly-detection", "ai-assistant"]
-packages = [{include = "app"}]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
