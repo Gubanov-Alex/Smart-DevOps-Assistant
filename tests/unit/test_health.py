@@ -42,7 +42,6 @@ class TestHealthEndpoint:
 @pytest.mark.asyncio
 async def test_async_functionality():
     """Test async functionality works."""
-
     async def dummy_async():
         return "async_works"
 

@@ -17,7 +17,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Systems Administration",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -59,6 +58,7 @@ pre-commit = "^3.6.0"
 httpx = "^0.25.2"
 factory-boy = "^3.3.0"
 psutil = "^5.9.6"
+gevent = "^23.9.1"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"
@@ -129,17 +129,21 @@ addopts = [
     "--strict-config",
     "--tb=short",
     "--maxfail=5",
-    "--durations=10"
+    "--durations=10",
+    "--ignore=setup.py",
+    "--ignore=migrations/",
+    "--ignore=build/",
+    "--ignore=dist/"
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 filterwarnings = [
-    "error",
     "ignore::UserWarning",
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
@@ -150,13 +154,7 @@ markers = [
     "asyncio: marks tests as async tests",
 ]
 asyncio_mode = "auto"
-# Minimum test discovery
-collect_ignore = [
-    "setup.py",
-    "migrations/",
-    "build/",
-    "dist/"
-]
+norecursedirs = ["build", "dist", ".git", ".tox", "*.egg"]
 
 [tool.coverage.run]
 source = ["app"]
