@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.exceptions import BaseAppException
 from app.core.logging import setup_logging
+import os
 
 
 @asynccontextmanager
@@ -114,7 +115,7 @@ if __name__ == "__main__":
     settings = get_settings()
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
+        host=os.getenv("HOST", "127.0.0.1"),
         port=8000,
         reload=settings.is_development,
         log_level=settings.log_level.lower(),
