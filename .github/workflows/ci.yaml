@@ -5,9 +5,9 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
-  workflow_dispatch:  # Ручной запуск
+  workflow_dispatch:
   schedule:
-    - cron: '0 2 * * 0'  # Weekly security scans
+    - cron: '0 2 * * 0'
 
 env:
   PYTHON_VERSION: "3.12"
@@ -16,7 +16,7 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/smart-devops-assistant
 
 jobs:
-  # Pre-flight validation
+  # Улучшенная детекция изменений с fallback
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
@@ -25,8 +25,12 @@ jobs:
       python: ${{ steps.filter.outputs.python }}
       docker: ${{ steps.filter.outputs.docker }}
       docs: ${{ steps.filter.outputs.docs }}
+      config: ${{ steps.filter.outputs.config }}
+      # Критическая логика: всегда запускать на main/develop или при ручном запуске
+      should_run_tests: ${{ steps.should_run.outputs.result }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -44,13 +48,37 @@ jobs:
               - 'docs/**'
               - '**/*.md'
               - 'mkdocs.yml'
+            config:
+              - '.github/workflows/**'
+              - 'scripts/**'
+              - '*.yml'
+              - '*.yaml'
+              - '*.toml'
 
-  # Code quality matrix
+      - name: Determine if tests should run
+        id: should_run
+        run: |
+          # Всегда запускать для критических веток, ручного запуска или конфиг изменений
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || \
+             [[ "${{ github.ref }}" == "refs/heads/develop" ]] || \
+             [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+             [[ "${{ github.event_name }}" == "schedule" ]] || \
+             [[ "${{ steps.filter.outputs.python }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.config }}" == "true" ]]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+            echo "🚀 Tests will run: critical branch, manual trigger, or relevant changes detected"
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Tests skipped: docs-only changes on feature branch"
+          fi
+
+  # Базовые проверки качества (быстрые)
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    # Запускать если изменения релевантны ИЛИ критическая ветка
+    if: needs.changes.outputs.should_run_tests == 'true'
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -84,29 +112,33 @@ jobs:
             poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
 
       - name: Install dependencies
-        run: |
-          poetry install --no-interaction --with dev
-          poetry install --no-interaction  # Install main project
+        run: poetry install --no-interaction --with dev
 
       - name: Run quality checks
         run: |
           case "${{ matrix.check }}" in
             format)
               echo "🎨 Checking code formatting..."
-              poetry run black --check --diff app/ tests/
-              poetry run isort --check-only --diff app/ tests/
+              poetry run black --check --diff app/ tests/ || {
+                echo "❌ Code formatting issues found. Run: poetry run black app/ tests/"
+                exit 1
+              }
+              poetry run isort --check-only --diff app/ tests/ || {
+                echo "❌ Import sorting issues found. Run: poetry run isort app/ tests/"
+                exit 1
+              }
               ;;
             lint)
               echo "🔍 Running linting..."
-              poetry run flake8 app/ tests/
+              poetry run flake8 app/ tests/ --max-complexity=10 --max-line-length=88
               ;;
             security-scan)
               echo "🔒 Security scanning..."
-              poetry run bandit -r app/ -f json -o bandit-report.json || echo "Bandit completed with issues"
+              poetry run bandit -r app/ -f json -o bandit-report.json -ll
               ;;
             docstring)
               echo "📝 Checking docstrings..."
-              poetry run pydocstyle app/ --convention=google || echo "Docstring issues found"
+              poetry run pydocstyle app/ --convention=google --add-ignore=D100,D104
               ;;
           esac
 
@@ -118,12 +150,12 @@ jobs:
           path: bandit-report.json
           retention-days: 7
 
-  # Application startup test
+  # Application health check
   app-health:
     name: Application Health
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.changes.outputs.should_run_tests == 'true'
     timeout-minutes: 5
 
     steps:
@@ -157,6 +189,7 @@ jobs:
       - name: Test application startup
         run: |
           poetry run python -c "
+          import sys
           try:
               # Test basic imports
               import app
@@ -166,21 +199,30 @@ jobs:
               try:
                   from app.main import app as fastapi_app
                   print('✅ FastAPI application creates successfully')
-              except ImportError:
-                  print('ℹ️  FastAPI app not found, skipping')
+                  
+                  # Test basic endpoints
+                  from fastapi.testclient import TestClient
+                  client = TestClient(fastapi_app)
+                  response = client.get('/health')
+                  if response.status_code == 200:
+                      print('✅ Health endpoint responds correctly')
+                  else:
+                      print(f'⚠️ Health endpoint returned {response.status_code}')
+              except ImportError as e:
+                  print(f'ℹ️  FastAPI app not found: {e}')
               
               print('🚀 Application health check passed')
           except Exception as e:
               print(f'❌ Application health check failed: {e}')
-              exit(1)
+              sys.exit(1)
           "
 
-  # Unit tests (fast, no services)
+  # Unit tests
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
     needs: [changes, quality]
-    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.changes.outputs.should_run_tests == 'true'
     timeout-minutes: 10
 
     steps:
@@ -219,8 +261,11 @@ jobs:
             --cov=app \
             --cov-report=xml:coverage-unit.xml \
             --cov-report=html:htmlcov-unit \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
             --junit-xml=junit-unit.xml \
-            -v --tb=short --maxfail=5
+            -v --tb=short --maxfail=5 \
+            --durations=10
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -242,12 +287,12 @@ jobs:
             coverage-unit.xml
           retention-days: 7
 
-  # Integration tests (with services)
+  # Integration tests
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [changes, quality]
-    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.changes.outputs.should_run_tests == 'true'
     timeout-minutes: 15
 
     services:
@@ -305,8 +350,10 @@ jobs:
 
       - name: Wait for services
         run: |
-          echo "Waiting for services to start..."
-          sleep 10  # Simple wait - services usually start within 10 seconds
+          echo "🔄 Waiting for services to be ready..."
+          timeout 30 bash -c 'until pg_isready -h localhost -p 5432; do sleep 1; done'
+          timeout 30 bash -c 'until redis-cli -h localhost -p 6379 ping; do sleep 1; done'
+          echo "✅ Services are ready"
 
       - name: Run integration tests
         env:
@@ -316,7 +363,8 @@ jobs:
         run: |
           poetry run pytest tests/integration/ \
             --junit-xml=junit-integration.xml \
-            -v --tb=short --maxfail=5
+            -v --tb=short --maxfail=5 \
+            --durations=10
 
       - name: Upload test artifacts
         if: always()
@@ -326,12 +374,12 @@ jobs:
           path: junit-integration.xml
           retention-days: 7
 
-  # ML tests (no services)
+  # ML tests (условные — только если есть ML изменения)
   ml-tests:
     name: ML Tests
     runs-on: ubuntu-latest
     needs: [changes, quality]
-    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.changes.outputs.should_run_tests == 'true'
     timeout-minutes: 15
 
     steps:
@@ -366,10 +414,17 @@ jobs:
         env:
           ENVIRONMENT: testing
         run: |
-          poetry run pytest tests/ml/ \
-            -m "not benchmark" \
-            --junit-xml=junit-ml.xml \
-            -v --tb=short --maxfail=5
+          # Проверяем, есть ли ML тесты
+          if [ -d "tests/ml" ]; then
+            poetry run pytest tests/ml/ \
+              -m "not benchmark" \
+              --junit-xml=junit-ml.xml \
+              -v --tb=short --maxfail=5 \
+              --durations=10
+          else
+            echo "ℹ️ No ML tests directory found, skipping ML tests"
+            touch junit-ml.xml  # Создаем пустой файл для артефактов
+          fi
 
       - name: Upload test artifacts
         if: always()
@@ -379,12 +434,14 @@ jobs:
           path: junit-ml.xml
           retention-days: 7
 
-  # ML Performance Benchmarks
+  # ML Benchmarks (только для main и schedule)
   benchmarks:
     name: ML Benchmarks
     runs-on: ubuntu-latest
     needs: [changes, unit-tests]
-    if: needs.changes.outputs.python == 'true' && (github.event_name == 'schedule' || github.ref == 'refs/heads/main')
+    if: |
+      needs.changes.outputs.should_run_tests == 'true' && 
+      (github.event_name == 'schedule' || github.ref == 'refs/heads/main')
     timeout-minutes: 30
 
     steps:
@@ -405,13 +462,18 @@ jobs:
 
       - name: Run performance benchmarks
         run: |
-          poetry run pytest tests/ml/ -v \
-            -m benchmark \
-            --benchmark-json=benchmark-results.json \
-            --benchmark-compare-fail=min:5% \
-            --benchmark-compare-fail=mean:10% \
-            --benchmark-disable-gc \
-            --benchmark-warmup=on
+          if [ -d "tests/ml" ]; then
+            poetry run pytest tests/ml/ -v \
+              -m benchmark \
+              --benchmark-json=benchmark-results.json \
+              --benchmark-compare-fail=min:5% \
+              --benchmark-compare-fail=mean:10% \
+              --benchmark-disable-gc \
+              --benchmark-warmup=on
+          else
+            echo "ℹ️ No ML tests directory found, creating empty benchmark results"
+            echo '{"benchmarks": []}' > benchmark-results.json
+          fi
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
@@ -425,7 +487,9 @@ jobs:
     name: Security Analysis
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.python == 'true' || github.event_name == 'schedule'
+    if: |
+      needs.changes.outputs.should_run_tests == 'true' || 
+      github.event_name == 'schedule'
     timeout-minutes: 30
     permissions:
       security-events: write
@@ -466,12 +530,15 @@ jobs:
         with:
           category: "/language:python"
 
-  # Docker build and security
+  # Docker build (оптимизированный)
   docker:
     name: Docker Build & Scan
     runs-on: ubuntu-latest
     needs: [changes, quality, unit-tests]
-    if: needs.changes.outputs.docker == 'true' || github.ref == 'refs/heads/main'
+    if: |
+      needs.changes.outputs.docker == 'true' || 
+      needs.changes.outputs.python == 'true' || 
+      github.ref == 'refs/heads/main'
     timeout-minutes: 30
     permissions:
       contents: read
@@ -506,7 +573,7 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build Docker image (simple, no cache)
+      - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -516,6 +583,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Run Trivy container scan
         if: github.event_name != 'pull_request'
@@ -524,7 +593,7 @@ jobs:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           format: 'sarif'
           output: 'container-trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'  # Only scan critical/high to speed up
+          severity: 'CRITICAL,HIGH'
 
       - name: Upload container scan results
         if: github.event_name != 'pull_request'
@@ -532,7 +601,7 @@ jobs:
         with:
           sarif_file: 'container-trivy-results.sarif'
 
-  # Deployment gate
+  # Deploy staging (упрощенный)
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
@@ -562,17 +631,7 @@ jobs:
           # TODO: Add actual smoke tests
           # curl -f https://staging.smart-devops-assistant.com/health
 
-      - name: Notify deployment status
-        if: always()
-        run: |
-          echo "🚀 Deployment completed with status: ${{ job.status }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Author: ${{ github.actor }}"
-          echo "Environment: https://staging.smart-devops-assistant.com"
-          # TODO: Add Slack notification when webhook is configured
-          # Slack webhook URL needed in secrets.SLACK_WEBHOOK_URL
-
-  # Production deployment
+  # Deploy production
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
@@ -600,15 +659,6 @@ jobs:
           sleep 10  # Wait for deployment
           # TODO: Add comprehensive health checks
           # ./scripts/production-health-check.sh
-
-      - name: Notify production deployment
-        if: always()
-        run: |
-          echo "🚀 Production deployment completed with status: ${{ job.status }}"
-          echo "Version: ${{ github.sha }}"
-          echo "Author: ${{ github.actor }}"
-          echo "Environment: https://smart-devops-assistant.com"
-          # TODO: Add Slack notification when webhook is configured
 
   # Post-deployment monitoring
   post-deploy-monitoring:
