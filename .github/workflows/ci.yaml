@@ -480,7 +480,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: Set up Docker Builds
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
@@ -561,17 +561,13 @@ jobs:
 
       - name: Notify deployment status
         if: always()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          channel: '#deployments'
-          text: |
-            Staging deployment: ${{ job.status }}
-            Commit: ${{ github.sha }}
-            Author: ${{ github.actor }}
-            Environment: https://staging.smart-devops-assistant.com
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          echo "🚀 Deployment completed with status: ${{ job.status }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
+          echo "Environment: https://staging.smart-devops-assistant.com"
+          # TODO: Add Slack notification when webhook is configured
+          # Slack webhook URL needed in secrets.SLACK_WEBHOOK_URL
 
   # Production deployment
   deploy-production:
@@ -604,17 +600,12 @@ jobs:
 
       - name: Notify production deployment
         if: always()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          channel: '#production-deployments'
-          text: |
-            🚀 Production deployment: ${{ job.status }}
-            Version: ${{ github.sha }}
-            Author: ${{ github.actor }}
-            Environment: https://smart-devops-assistant.com
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          echo "🚀 Production deployment completed with status: ${{ job.status }}"
+          echo "Version: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
+          echo "Environment: https://smart-devops-assistant.com"
+          # TODO: Add Slack notification when webhook is configured
 
   # Post-deployment monitoring
   post-deploy-monitoring:
@@ -639,13 +630,8 @@ jobs:
 
       - name: Alert on performance regression
         if: failure()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: failure
-          channel: '#alerts'
-          text: |
-            🚨 Performance regression detected after deployment
-            Version: ${{ github.sha }}
-            Please check application metrics immediately
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          echo "🚨 Performance regression detected after deployment"
+          echo "Version: ${{ github.sha }}"
+          echo "Please check application metrics immediately"
+          # TODO: Add Slack alert when webhook is configured
