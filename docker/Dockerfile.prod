@@ -1,0 +1,130 @@
+# Production Dockerfile optimized for Python 3.12
+FROM python:3.12-slim as base
+
+# Set environment variables for Python 3.12 optimizations
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # Python 3.12 specific optimizations
+    PYTHONOPTIMIZE=2 \
+    PYTHONHASHSEED=random
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    # For PyTorch CPU optimizations
+    libblas3 \
+    liblapack3 \
+    libopenblas-base \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install Poetry
+RUN pip install poetry==1.7.1
+
+# Configure Poetry for production
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_VENV_IN_PROJECT=1 \
+    POETRY_CACHE_DIR=/tmp/poetry_cache \
+    POETRY_INSTALLER_PARALLEL=true
+
+# Create app user for security
+RUN groupadd --gid 1000 app && \
+    useradd --uid 1000 --gid app --shell /bin/bash --create-home app
+
+# Set work directory
+WORKDIR /app
+
+# Copy Poetry files
+COPY pyproject.toml poetry.lock ./
+
+# Production stage
+FROM base as production
+
+# Install only production dependencies
+RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
+
+# Copy application code
+COPY --chown=app:app . .
+
+# Install application
+RUN poetry install --only=main
+
+# Create directories for models and logs
+RUN mkdir -p /app/models /app/logs && \
+    chown -R app:app /app/models /app/logs
+
+# Security: Remove unnecessary packages and clean up
+RUN apt-get remove -y build-essential git curl && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Switch to non-root user
+USER app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD poetry run python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)"
+
+# Expose port
+EXPOSE 8000
+
+# Use optimized Python 3.12 startup
+CMD ["poetry", "run", "python", "-O", "-m", "app.main"]
+
+# Development stage
+FROM base as development
+
+# Install all dependencies including dev tools
+RUN poetry install --no-root && rm -rf $POETRY_CACHE_DIR
+
+# Copy application code
+COPY . .
+
+# Install application in development mode
+RUN poetry install
+
+# Development doesn't need user switching for easier debugging
+WORKDIR /app
+
+# Expose port and debug ports
+EXPOSE 8000 5678
+
+# Development command with hot reload
+CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# Testing stage
+FROM development as testing
+
+# Copy test files
+COPY tests/ tests/
+
+# Run tests during build for CI
+RUN poetry run pytest tests/ --tb=short
+
+# Linting stage
+FROM development as linting
+
+# Run code quality checks
+RUN poetry run black --check app/ && \
+    poetry run isort --check-only app/ && \
+    poetry run mypy app/ && \
+    poetry run bandit -r app/
+
+# Security scanning stage
+FROM production as security
+
+# Install security scanning tools
+USER root
+RUN pip install safety bandit
+
+# Run security scans
+RUN poetry run safety check && \
+    poetry run bandit -r app/ -f json -o /tmp/bandit-report.json
+
+# Switch back to app user
+USER app

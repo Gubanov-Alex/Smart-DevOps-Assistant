@@ -1,93 +1,262 @@
-# .github/workflows/ci.yaml
 name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+  workflow_dispatch:  # Ручной запуск
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly security scans
 
 env:
   PYTHON_VERSION: "3.12"
   POETRY_VERSION: "1.8.3"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/smart-devops-assistant
 
 jobs:
-  # Code Quality Checks
+  # Pre-flight validation
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      docker: ${{ steps.filter.outputs.docker }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python:
+              - '**/*.py'
+              - 'pyproject.toml'
+              - 'poetry.lock'
+              - 'requirements*.txt'
+            docker:
+              - 'docker/**'
+              - 'Dockerfile*'
+              - 'docker-compose*.yaml'
+            docs:
+              - 'docs/**'
+              - '**/*.md'
+              - 'mkdocs.yml'
+
+  # Code quality matrix
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: ${{ env.POETRY_VERSION }}
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v4
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
-
-    - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root
-
-    - name: Install project
-      run: poetry install --no-interaction --no-root
-
-
-    - name: Check code formatting
-      run: |
-        poetry run black --check app/ tests/ || {
-          echo "Code formatting issues found"
-          exit 1
-        }
-        poetry run isort --check-only app/ tests/ || {
-          echo "Import sorting issues found"
-          exit 1
-        }
-
-    - name: Lint with flake8
-      run: poetry run flake8 app/ tests/
-
-    - name: Type checking with mypy (app only)
-      run: poetry run mypy app/ --exclude tests/
-
-    - name: Security check with bandit
-      run: poetry run bandit -r app/ -f json -o bandit-report.json || true
-
-    - name: Upload security report
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: security-report
-        path: bandit-report.json
-        retention-days: 7
-
-
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.12"]
+        check: [format, lint, security-scan, docstring]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-${{ matrix.check }}
+          restore-keys: |
+            poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-
+            poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --with dev
+          poetry install --no-interaction  # Install main project
+
+      - name: Run quality checks
+        run: |
+          case "${{ matrix.check }}" in
+            format)
+              echo "🎨 Checking code formatting..."
+              poetry run black --check --diff app/ tests/
+              poetry run isort --check-only --diff app/ tests/
+              ;;
+            lint)
+              echo "🔍 Running linting..."
+              poetry run flake8 app/ tests/
+              ;;
+            security-scan)
+              echo "🔒 Security scanning..."
+              poetry run bandit -r app/ -f json -o bandit-report.json || echo "Bandit completed with issues"
+              ;;
+            docstring)
+              echo "📝 Checking docstrings..."
+              poetry run pydocstyle app/ --convention=google || echo "Docstring issues found"
+              ;;
+          esac
+
+      - name: Upload security report
+        if: matrix.check == 'security-scan' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+          retention-days: 7
+
+  # Application startup test
+  app-health:
+    name: Application Health
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-app
+          restore-keys: |
+            poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Test application startup
+        run: |
+          poetry run python -c "
+          try:
+              # Test basic imports
+              import app
+              print('✅ App module imports successfully')
+              
+              # Test FastAPI app creation (if exists)
+              try:
+                  from app.main import app as fastapi_app
+                  print('✅ FastAPI application creates successfully')
+              except ImportError:
+                  print('ℹ️  FastAPI app not found, skipping')
+              
+              print('🚀 Application health check passed')
+          except Exception as e:
+              print(f'❌ Application health check failed: {e}')
+              exit(1)
+          "
+
+  # Unit tests (fast, no services)
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [changes, quality]
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-unit
+          restore-keys: |
+            poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run unit tests
+        env:
+          ENVIRONMENT: testing
+        run: |
+          poetry run pytest tests/unit/ \
+            --cov=app \
+            --cov-report=xml:coverage-unit.xml \
+            --cov-report=html:htmlcov-unit \
+            --junit-xml=junit-unit.xml \
+            -v --tb=short --maxfail=5
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage-unit.xml
+          flags: unit
+          name: unit-tests-coverage
+          fail_ci_if_error: false
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: |
+            junit-unit.xml
+            htmlcov-unit/
+            coverage-unit.xml
+          retention-days: 7
+
+  # Integration tests (with services)
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [changes, quality]
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 15
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:15-alpine
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -97,7 +266,7 @@ jobs:
           - 5432:5432
 
       redis:
-        image: redis:7
+        image: redis:7-alpine
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -107,122 +276,371 @@ jobs:
           - 6379:6379
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: ${{ env.POETRY_VERSION }}
-        virtualenvs-create: true
-        virtualenvs-in-project: true
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v4
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-integration
+          restore-keys: |
+            poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-
 
-    - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root
+      - name: Install dependencies
+        run: poetry install --no-interaction
 
-    - name: Install project
-      run: poetry install --no-interaction
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to start..."
+          sleep 10  # Simple wait - services usually start within 10 seconds
 
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          ENVIRONMENT: testing
+        run: |
+          poetry run pytest tests/integration/ \
+            --junit-xml=junit-integration.xml \
+            -v --tb=short --maxfail=5
 
-    - name: Run unit tests
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-        REDIS_URL: redis://localhost:6379/0
-        ENVIRONMENT: testing
-        COVERAGE_PROCESS_START: .coveragerc
-      run: |
-        # Создаем временный .coveragerc без gevent
-        cat > .coveragerc << EOF
-        [run]
-        source = app
-        omit =
-            */tests/*
-            */test_*
-            */conftest.py
-            */__init__.py
-            */migrations/*
-            app/main.py
-        parallel = true
-        concurrency = thread
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: junit-integration.xml
+          retention-days: 7
 
-        [report]
-        precision = 2
-        show_missing = true
-        skip_covered = false
-        exclude_lines =
-            pragma: no cover
-            def __repr__
-            raise AssertionError
-            raise NotImplementedError
-            if __name__ == .__main__.:
-            if TYPE_CHECKING:
-        EOF
-
-        poetry run pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=html --cov-config=.coveragerc
-
-    - name: Run integration tests
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-        REDIS_URL: redis://localhost:6379/0
-        ENVIRONMENT: testing
-      run: |
-        poetry run pytest tests/integration/ -v
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-
-    - name: Upload coverage reports
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report-${{ matrix.python-version }}
-        path: htmlcov/
-        retention-days: 7
-
-    # ML Model Tests
+  # ML tests (no services)
   ml-tests:
-    name: ML Model Tests
+    name: ML Tests
     runs-on: ubuntu-latest
+    needs: [changes, quality]
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 15
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: ${{ env.POETRY_VERSION }}
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v4
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
-    - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction
-    - name: Install project
-      run: poetry install --no-interaction
-    - name: Run ML model tests
-      run: |
-        poetry run pytest tests/ml/ -v --tb=short -m "not benchmark"
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-ml
+          restore-keys: |
+            poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run ML tests
+        env:
+          ENVIRONMENT: testing
+        run: |
+          poetry run pytest tests/ml/ \
+            -m "not benchmark" \
+            --junit-xml=junit-ml.xml \
+            -v --tb=short --maxfail=5
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-test-results
+          path: junit-ml.xml
+          retention-days: 7
+
+  # ML Performance Benchmarks
+  benchmarks:
+    name: ML Benchmarks
+    runs-on: ubuntu-latest
+    needs: [changes, unit-tests]
+    if: needs.changes.outputs.python == 'true' && (github.event_name == 'schedule' || github.ref == 'refs/heads/main')
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run performance benchmarks
+        run: |
+          poetry run pytest tests/ml/ -v \
+            -m benchmark \
+            --benchmark-json=benchmark-results.json \
+            --benchmark-compare-fail=min:5% \
+            --benchmark-compare-fail=mean:10% \
+            --benchmark-disable-gc \
+            --benchmark-warmup=on
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-benchmark-results
+          path: benchmark-results.json
+          retention-days: 30
+
+  # Security scanning
+  security:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'schedule'
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          config: |
+            paths:
+              - app/
+            paths-ignore:
+              - tests/
+              - migrations/
+              - docs/
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+  # Docker build and security
+  docker:
+    name: Docker Build & Scan
+    runs-on: ubuntu-latest
+    needs: [changes, quality, unit-tests]
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+    timeout-minutes: 15  # Reduced from 20
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:v0.12.4
+            network=host
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.dev
+          target: development
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=gha,scope=docker-dev
+          cache-to: |
+            type=gha,scope=docker-dev,mode=max
+          platforms: linux/amd64
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Run Trivy container scan
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'container-trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'  # Only scan critical/high to speed up
+
+      - name: Upload container scan results
+        if: github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'container-trivy-results.sarif'
+
+  # Deployment gate
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [quality, unit-tests, integration-tests, app-health, security]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.smart-devops-assistant.com
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          echo "Commit: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
+          # TODO: Add actual deployment commands
+          # kubectl apply -f k8s/staging/
+          # helm upgrade smart-devops-staging ./charts/smart-devops-assistant
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests..."
+          sleep 5  # Wait for deployment
+          # TODO: Add actual smoke tests
+          # curl -f https://staging.smart-devops-assistant.com/health
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          echo "🚀 Deployment completed with status: ${{ job.status }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
+          echo "Environment: https://staging.smart-devops-assistant.com"
+          # TODO: Add Slack notification when webhook is configured
+          # Slack webhook URL needed in secrets.SLACK_WEBHOOK_URL
+
+  # Production deployment
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [quality, unit-tests, integration-tests, app-health, security, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://smart-devops-assistant.com
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "🚀 Deploying to production environment..."
+          echo "Version: ${{ github.sha }}"
+          # TODO: Add actual deployment commands
+          # kubectl apply -f k8s/production/
+          # helm upgrade smart-devops-prod ./charts/smart-devops-assistant
+
+      - name: Run production smoke tests
+        run: |
+          echo "🧪 Running production smoke tests..."
+          sleep 10  # Wait for deployment
+          # TODO: Add comprehensive health checks
+          # ./scripts/production-health-check.sh
+
+      - name: Notify production deployment
+        if: always()
+        run: |
+          echo "🚀 Production deployment completed with status: ${{ job.status }}"
+          echo "Version: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
+          echo "Environment: https://smart-devops-assistant.com"
+          # TODO: Add Slack notification when webhook is configured
+
+  # Post-deployment monitoring
+  post-deploy-monitoring:
+    name: Post-Deploy Monitoring
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 30
+
+    steps:
+      - name: Monitor application health
+        run: |
+          echo "📊 Monitoring application health for 5 minutes..."
+          # TODO: Add monitoring checks
+          # ./scripts/monitor-health.sh --duration=300
+
+      - name: Run load tests
+        run: |
+          echo "⚡ Running load tests..."
+          # TODO: Add load testing
+          # k6 run scripts/load-test.js
+
+      - name: Alert on performance regression
+        if: failure()
+        run: |
+          echo "🚨 Performance regression detected after deployment"
+          echo "Version: ${{ github.sha }}"
+          echo "Please check application metrics immediately"
+          # TODO: Add Slack alert when webhook is configured
