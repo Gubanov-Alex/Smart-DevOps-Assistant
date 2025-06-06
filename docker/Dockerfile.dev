@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for Smart DevOps Assistant
-FROM python:3.12-slim as base
+FROM python:3.12-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -28,13 +28,13 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock ./
 
 # Dependencies stage (heavily cached)
-FROM base as dependencies
+FROM base AS dependencies
 
 # Install dependencies ONLY (exclude source code for better caching)
 RUN poetry install --only main --no-root && rm -rf $POETRY_CACHE_DIR
 
 # Development stage
-FROM dependencies as development
+FROM dependencies AS development
 
 # Install dev dependencies
 RUN poetry install --with dev --no-root && rm -rf $POETRY_CACHE_DIR
@@ -56,11 +56,11 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # Production stage (smaller image)
-FROM dependencies as production
+FROM dependencies AS production
 
-# Copy only necessary files
+# Copy only necessary files (README.md optional)
 COPY app/ ./app/
-COPY README.md ./
+COPY --from=base /app/pyproject.toml ./
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash --uid 1000 app && \
