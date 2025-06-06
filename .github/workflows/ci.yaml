@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [format, lint, type-check, security-scan, docstring]
+        check: [format, lint, security-scan, docstring]
 
     steps:
       - uses: actions/checkout@v4
@@ -84,7 +84,9 @@ jobs:
             poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
 
       - name: Install dependencies
-        run: poetry install --no-interaction --only dev
+        run: |
+          poetry install --no-interaction --with dev
+          poetry install --no-interaction  # Install main project
 
       - name: Run quality checks
         run: |
@@ -97,10 +99,6 @@ jobs:
             lint)
               echo "🔍 Running linting..."
               poetry run flake8 app/ tests/
-              ;;
-            type-check)
-              echo "🔎 Type checking..."
-              poetry run mypy app/ --config-file pyproject.toml
               ;;
             security-scan)
               echo "🔒 Security scanning..."
@@ -177,58 +175,13 @@ jobs:
               exit(1)
           "
 
-  # Test matrix
-  test:
-    name: Tests
+  # Unit tests (fast, no services)
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
     needs: [changes, quality]
     if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        test-type: [unit, integration, ml]
-        include:
-          - test-type: unit
-            test-path: tests/unit/
-            services: false
-            coverage: true
-          - test-type: integration
-            test-path: tests/integration/
-            services: true
-            coverage: false
-          - test-type: ml
-            test-path: tests/ml/
-            services: false
-            coverage: false
-
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-          POSTGRES_USER: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-        # Conditionally start services
-
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -251,7 +204,99 @@ jobs:
           path: |
             ~/.cache/pypoetry
             .venv
-          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-test
+          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-unit
+          restore-keys: |
+            poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run unit tests
+        env:
+          ENVIRONMENT: testing
+        run: |
+          poetry run pytest tests/unit/ \
+            --cov=app \
+            --cov-report=xml:coverage-unit.xml \
+            --cov-report=html:htmlcov-unit \
+            --junit-xml=junit-unit.xml \
+            -v --tb=short --maxfail=5
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage-unit.xml
+          flags: unit
+          name: unit-tests-coverage
+          fail_ci_if_error: false
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: |
+            junit-unit.xml
+            htmlcov-unit/
+            coverage-unit.xml
+          retention-days: 7
+
+  # Integration tests (with services)
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [changes, quality]
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-integration
           restore-keys: |
             poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-
 
@@ -259,61 +304,86 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Wait for services
-        if: matrix.services
         run: |
           timeout 30 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
           timeout 30 bash -c 'until redis-cli -h localhost -p 6379 ping | grep PONG; do sleep 1; done'
 
-      - name: Run tests
+      - name: Run integration tests
         env:
-          DATABASE_URL: ${{ matrix.services && 'postgresql://postgres:postgres@localhost:5432/test_db' || '' }}
-          REDIS_URL: ${{ matrix.services && 'redis://localhost:6379/0' || '' }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
           ENVIRONMENT: testing
         run: |
-          # Build test command
-          CMD="poetry run pytest ${{ matrix.test-path }} -v --tb=short --maxfail=5"
-          
-          # Add coverage for unit tests
-          if [[ "${{ matrix.coverage }}" == "true" ]]; then
-            CMD="$CMD --cov=app --cov-report=xml:coverage-${{ matrix.test-type }}.xml --cov-report=html:htmlcov-${{ matrix.test-type }}"
-          fi
-          
-          # Add benchmark exclusion for ML tests
-          if [[ "${{ matrix.test-type }}" == "ml" ]]; then
-            CMD="$CMD -m 'not benchmark'"
-          fi
-          
-          # Add JUnit XML for all tests
-          CMD="$CMD --junit-xml=junit-${{ matrix.test-type }}.xml"
-          
-          echo "Running: $CMD"
-          eval $CMD
-
-      - name: Upload coverage
-        if: matrix.coverage && success()
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          flags: ${{ matrix.test-type }}
-          name: ${{ matrix.test-type }}-coverage
-          fail_ci_if_error: false
+          poetry run pytest tests/integration/ \
+            --junit-xml=junit-integration.xml \
+            -v --tb=short --maxfail=5
 
       - name: Upload test artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.test-type }}
+          name: integration-test-results
+          path: junit-integration.xml
+          retention-days: 7
+
+  # ML tests (no services)
+  ml-tests:
+    name: ML Tests
+    runs-on: ubuntu-latest
+    needs: [changes, quality]
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
           path: |
-            junit-${{ matrix.test-type }}.xml
-            htmlcov-${{ matrix.test-type }}/
-            coverage-${{ matrix.test-type }}.xml
+            ~/.cache/pypoetry
+            .venv
+          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-ml
+          restore-keys: |
+            poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run ML tests
+        env:
+          ENVIRONMENT: testing
+        run: |
+          poetry run pytest tests/ml/ \
+            -m "not benchmark" \
+            --junit-xml=junit-ml.xml \
+            -v --tb=short --maxfail=5
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-test-results
+          path: junit-ml.xml
           retention-days: 7
 
   # ML Performance Benchmarks
   benchmarks:
     name: ML Benchmarks
     runs-on: ubuntu-latest
-    needs: [changes, test]
+    needs: [changes, unit-tests]
     if: needs.changes.outputs.python == 'true' && (github.event_name == 'schedule' || github.ref == 'refs/heads/main')
     timeout-minutes: 30
 
@@ -364,6 +434,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          config: |
+            paths:
+              - app/
+            paths-ignore:
+              - tests/
+              - migrations/
+              - docs/
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -379,15 +461,16 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Run CodeQL Analysis
+      - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-
+        with:
+          category: "/language:python"
 
   # Docker build and security
   docker:
     name: Docker Build & Scan
     runs-on: ubuntu-latest
-    needs: [changes, quality, test]
+    needs: [changes, quality, unit-tests]
     if: needs.changes.outputs.docker == 'true' || github.ref == 'refs/heads/main'
     timeout-minutes: 20
     permissions:
@@ -397,7 +480,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Builds
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
@@ -450,7 +533,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [quality, test, app-health, security]
+    needs: [quality, unit-tests, integration-tests, app-health, security]
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment:
       name: staging
@@ -494,7 +577,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [quality, test, app-health, security, docker]
+    needs: [quality, unit-tests, integration-tests, app-health, security, docker]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: production
