@@ -5,6 +5,7 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:  # Ручной запуск
   schedule:
     - cron: '0 2 * * 0'  # Weekly security scans
 
@@ -49,7 +50,7 @@ jobs:
     name: Code Quality
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.python == 'true'
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -124,7 +125,7 @@ jobs:
     name: Application Health
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.python == 'true'
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
     timeout-minutes: 5
 
     steps:
@@ -181,7 +182,7 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     needs: [changes, quality]
-    if: needs.changes.outputs.python == 'true'
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
     timeout-minutes: 20
     strategy:
       fail-fast: false
