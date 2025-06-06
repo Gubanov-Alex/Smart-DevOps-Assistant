@@ -60,6 +60,7 @@ factory-boy = "^3.3.0"
 types-redis = "^4.6.0"
 types-requests = "^2.31.0"
 psutil = {version = "^5.9.6", optional = true}
+pydocstyle = "^6.3.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"
