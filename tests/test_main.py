@@ -1,10 +1,11 @@
 """Integration tests for FastAPI application."""
-import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import patch
 
-from app.main import create_app
+import pytest
+from fastapi.testclient import TestClient
+
 from app.core.config import Settings
+from app.main import create_app
 
 
 @pytest.fixture
@@ -73,10 +74,7 @@ class TestMainApplication:
     def test_cors_headers_present(self, client: TestClient) -> None:
         """Test CORS headers are properly configured."""
         # Test with Origin header that should be allowed in development
-        response = client.get(
-            "/health",
-            headers={"Origin": "http://localhost:3000"}
-        )
+        response = client.get("/health", headers={"Origin": "http://localhost:3000"})
 
         assert response.status_code == 200
 
@@ -91,7 +89,7 @@ class TestMainApplication:
             headers={
                 "Origin": "http://localhost:3000",
                 "User-Agent": "Mozilla/5.0",
-            }
+            },
         )
 
         assert response.status_code == 200

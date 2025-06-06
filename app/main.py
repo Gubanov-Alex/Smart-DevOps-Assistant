@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     setup_logging(
         level=settings.log_level,
         format_type=settings.log_format,
-        development=settings.is_development
+        development=settings.is_development,
     )
 
     app = FastAPI(
@@ -59,10 +59,7 @@ def create_app() -> FastAPI:
 
     # Security middleware
     if settings.is_production:
-        app.add_middleware(
-            TrustedHostMiddleware,
-            allowed_hosts=["*.yourdomain.com", "localhost"]
-        )
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*.yourdomain.com", "localhost"])
 
     # CORS middleware
     app.add_middleware(
@@ -82,7 +79,7 @@ def create_app() -> FastAPI:
                 "error": exc.error_code,
                 "message": exc.message,
                 "details": exc.details,
-            }
+            },
         )
 
     # Health check endpoint

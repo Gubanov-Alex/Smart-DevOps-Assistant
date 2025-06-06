@@ -3,12 +3,13 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Any
+from typing import Any, Dict
 from uuid import UUID, uuid4
 
 
 class LogLevel(Enum):
     """Log severity levels."""
+
     DEBUG = "debug"
     INFO = "info"
     WARNING = "warning"
@@ -19,6 +20,7 @@ class LogLevel(Enum):
 @dataclass(frozen=True)
 class LogEntry:
     """Core log entry entity."""
+
     message: str
     timestamp: datetime
     level: LogLevel

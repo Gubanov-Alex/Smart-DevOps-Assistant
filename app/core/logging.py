@@ -15,9 +15,9 @@ def add_app_context(logger: Any, method_name: str, event_dict: EventDict) -> Eve
 
 
 def setup_logging(
-        level: str = "INFO",
-        format_type: Literal["json", "console"] = "json",
-        development: bool = False,
+    level: str = "INFO",
+    format_type: Literal["json", "console"] = "json",
+    development: bool = False,
 ) -> None:
     """Configure structured logging with structlog."""
 
@@ -45,16 +45,17 @@ def setup_logging(
 
     if development and format_type == "console":
         # Human-readable console output for development
-        shared_processors.extend([
-            structlog.processors.ExceptionPrettyPrinter(),
-            structlog.dev.ConsoleRenderer(colors=True)
-        ])
+        shared_processors.extend(
+            [
+                structlog.processors.ExceptionPrettyPrinter(),
+                structlog.dev.ConsoleRenderer(colors=True),
+            ]
+        )
     else:
         # JSON output for production
-        shared_processors.extend([
-            structlog.processors.format_exc_info,
-            structlog.processors.JSONRenderer()
-        ])
+        shared_processors.extend(
+            [structlog.processors.format_exc_info, structlog.processors.JSONRenderer()]
+        )
 
     # Configure structlog
     structlog.configure(
@@ -81,11 +82,11 @@ def get_logger(name: str = __name__) -> structlog.BoundLogger:
 
 # Logging utilities for FastAPI middleware
 def log_request_response(
-        method: str,
-        url: str,
-        status_code: int,
-        duration: float,
-        extra: Dict[str, Any] | None = None,
+    method: str,
+    url: str,
+    status_code: int,
+    duration: float,
+    extra: Dict[str, Any] | None = None,
 ) -> None:
     """Log HTTP request/response information."""
     logger = get_logger("http")
