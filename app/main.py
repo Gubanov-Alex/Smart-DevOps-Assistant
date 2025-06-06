@@ -1,4 +1,5 @@
 """FastAPI application factory and main entry point."""
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -11,7 +12,6 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.exceptions import BaseAppException
 from app.core.logging import setup_logging
-import os
 
 
 @asynccontextmanager
