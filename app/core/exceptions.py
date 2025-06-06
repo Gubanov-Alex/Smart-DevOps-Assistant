@@ -12,6 +12,7 @@ class BaseAppException(Exception):
         error_code: str = "INTERNAL_ERROR",
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
+        """Initialize the base application exception with a message, status code, and error code."""
         self.message = message
         self.status_code = status_code
         self.error_code = error_code
