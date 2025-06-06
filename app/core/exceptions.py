@@ -23,6 +23,7 @@ class ValidationError(BaseAppException):
     """Validation error exception."""
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize a validation error with a message and optional details."""
         super().__init__(
             message=message,
             status_code=422,
@@ -32,9 +33,10 @@ class ValidationError(BaseAppException):
 
 
 class NotFoundError(BaseAppException):
-    """Resource not found exception."""
+    """Resource didn't find exception."""
 
     def __init__(self, resource: str, identifier: str) -> None:
+        """Initialize a not found error with resource type and identifier."""
         super().__init__(
             message=f"{resource} with identifier '{identifier}' not found",
             status_code=404,
@@ -47,6 +49,7 @@ class ConflictError(BaseAppException):
     """Resource conflict exception."""
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize a conflict error with a message and optional details."""
         super().__init__(
             message=message,
             status_code=409,
@@ -59,6 +62,7 @@ class UnauthorizedError(BaseAppException):
     """Unauthorized access exception."""
 
     def __init__(self, message: str = "Authentication required") -> None:
+        """Initialize an unauthorized error with a message."""
         super().__init__(
             message=message,
             status_code=401,
@@ -70,6 +74,7 @@ class ForbiddenError(BaseAppException):
     """Forbidden access exception."""
 
     def __init__(self, message: str = "Access forbidden") -> None:
+        """Initialize a forbidden error with a message."""
         super().__init__(
             message=message,
             status_code=403,
@@ -78,9 +83,10 @@ class ForbiddenError(BaseAppException):
 
 
 class MLModelError(BaseAppException):
-    """ML model related exception."""
+    """ML model-related exception."""
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize an ML model error with a message and optional details."""
         super().__init__(
             message=message,
             status_code=500,
@@ -93,6 +99,7 @@ class ExternalServiceError(BaseAppException):
     """External service error exception."""
 
     def __init__(self, service: str, message: str) -> None:
+        """Initialize an external service error with service name and message."""
         super().__init__(
             message=f"External service '{service}' error: {message}",
             status_code=502,

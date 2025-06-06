@@ -20,8 +20,6 @@ def setup_logging(
     development: bool = False,
 ) -> None:
     """Configure structured logging with structlog."""
-
-    # Clear any existing handlers
     logging.root.handlers.clear()
 
     # Configure standard library logging
