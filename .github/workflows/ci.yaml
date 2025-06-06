@@ -215,7 +215,8 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-
+        # Conditionally start services
+        if: matrix.services
 
       redis:
         image: redis:7-alpine
@@ -226,7 +227,7 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-
+        if: matrix.services
 
     steps:
       - uses: actions/checkout@v4
@@ -289,9 +290,10 @@ jobs:
 
       - name: Upload coverage
         if: matrix.coverage && success()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage-${{ matrix.test-type }}.xml
           flags: ${{ matrix.test-type }}
           name: ${{ matrix.test-type }}-coverage
           fail_ci_if_error: false
@@ -379,7 +381,15 @@ jobs:
 
       - name: Run CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-
+        with:
+          languages: python
+          config: |
+            paths:
+              - app/
+            paths-ignore:
+              - tests/
+              - migrations/
+              - docs/
 
   # Docker build and security
   docker:
@@ -418,7 +428,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: docker/Dockerfile.dev
