@@ -217,7 +217,7 @@ jobs:
         ports:
           - 5432:5432
         # Conditionally start services
-        if: matrix.services
+
 
       redis:
         image: redis:7-alpine
