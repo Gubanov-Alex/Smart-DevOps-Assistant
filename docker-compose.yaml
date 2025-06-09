@@ -5,7 +5,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: docker/Dockerfile.dev
+      dockerfile: docker/Dockerfile
       target: development
     ports:
       - "8000:8000"
@@ -71,7 +71,7 @@ services:
   celery_worker:
     build:
       context: .
-      dockerfile: docker/Dockerfile.dev
+      dockerfile: docker/Dockerfile
       target: development
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
     environment:
@@ -94,7 +94,7 @@ services:
   celery_beat:
     build:
       context: .
-      dockerfile: docker/Dockerfile.dev
+      dockerfile: docker/Dockerfile
       target: development
     command: celery -A app.tasks.celery_app beat --loglevel=info
     environment:
@@ -117,7 +117,7 @@ services:
   flower:
     build:
       context: .
-      dockerfile: docker/Dockerfile.dev
+      dockerfile: docker/Dockerfile
       target: development
     command: celery -A app.tasks.celery_app flower --port=5555
     ports:
