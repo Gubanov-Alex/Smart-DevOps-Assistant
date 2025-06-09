@@ -16,7 +16,7 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/smart-devops-assistant
 
 jobs:
-  # Улучшенная детекция изменений с fallback
+    # Определяем изменения в коде
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
@@ -334,6 +334,12 @@ jobs:
           version: ${{ env.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
+
+      - name: Install system dependencies
+        run: |
+             sudo apt-get update
+             sudo apt-get install -y redis-tools postgresql-client
+
 
       - name: Cache dependencies
         uses: actions/cache@v4
