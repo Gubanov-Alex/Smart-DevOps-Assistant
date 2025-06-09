@@ -139,7 +139,7 @@ concurrency = ["thread"]
 
 [tool.coverage.report]
 precision = 2
-fail_under = 60  # Снижено с 75 до 60
+fail_under = 60  #
 show_missing = true
 skip_covered = false
 skip_empty = true
