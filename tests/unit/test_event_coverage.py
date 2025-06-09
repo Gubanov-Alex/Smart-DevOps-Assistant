@@ -19,8 +19,8 @@ from app.events.ml_events import (
 
 
 @dataclass(frozen=True)
-class TestDomainEvent(DomainEvent):
-    """Test event for coverage."""
+class TestDomainEventFixture(DomainEvent):
+    """Test event fixture for coverage - renamed to avoid pytest collection."""
 
     test_data: str
 
@@ -39,7 +39,7 @@ class TestEventBus:
     async def test_event_bus_publish_basic(self):
         """Test basic event publishing."""
         bus = EventBus()
-        event = TestDomainEvent(aggregate_id=uuid4(), test_data="test")
+        event = TestDomainEventFixture(aggregate_id=uuid4(), test_data="test")
 
         # Should not raise exception for basic publish
         try:
@@ -63,9 +63,9 @@ class TestEventBus:
 
         try:
             if hasattr(bus, "subscribe"):
-                bus.subscribe(TestDomainEvent, test_handler)
+                bus.subscribe(TestDomainEventFixture, test_handler)
             elif hasattr(bus, "on"):
-                bus.on(TestDomainEvent, test_handler)
+                bus.on(TestDomainEventFixture, test_handler)
         except (AttributeError, NotImplementedError):
             # Method might not be implemented
             pass
@@ -79,9 +79,9 @@ class TestEventBus:
 
         try:
             if hasattr(bus, "unsubscribe"):
-                bus.unsubscribe(TestDomainEvent, test_handler)
+                bus.unsubscribe(TestDomainEventFixture, test_handler)
             elif hasattr(bus, "off"):
-                bus.off(TestDomainEvent, test_handler)
+                bus.off(TestDomainEventFixture, test_handler)
         except (AttributeError, NotImplementedError):
             # Method might not be implemented
             pass
@@ -100,7 +100,7 @@ class TestInMemoryEventStore:
     def test_event_store_append(self):
         """Test appending events."""
         store = InMemoryEventStore()
-        event = TestDomainEvent(aggregate_id=uuid4(), test_data="test")
+        event = TestDomainEventFixture(aggregate_id=uuid4(), test_data="test")
 
         try:
             if hasattr(store, "append"):
@@ -113,17 +113,18 @@ class TestInMemoryEventStore:
             # Method might not be implemented
             pass
 
-    def test_event_store_get_events(self):
+    @pytest.mark.asyncio
+    async def test_event_store_get_events(self):
         """Test getting events."""
         store = InMemoryEventStore()
         aggregate_id = uuid4()
 
         try:
             if hasattr(store, "get_events"):
-                events = store.get_events(aggregate_id)
+                events = await store.get_events(aggregate_id)
                 assert isinstance(events, list)
             elif hasattr(store, "load"):
-                events = store.load(aggregate_id)
+                events = await store.load(aggregate_id)
                 assert isinstance(events, list)
         except (AttributeError, NotImplementedError):
             # Method might not be implemented
@@ -151,7 +152,7 @@ class TestEventMiddleware:
     @pytest.mark.asyncio
     async def test_audit_middleware(self):
         """Test audit middleware."""
-        event = TestDomainEvent(aggregate_id=uuid4(), test_data="test")
+        event = TestDomainEventFixture(aggregate_id=uuid4(), test_data="test")
 
         # Mock next handler
         async def mock_next(e):
@@ -168,7 +169,7 @@ class TestEventMiddleware:
     @pytest.mark.asyncio
     async def test_logging_middleware(self):
         """Test logging middleware."""
-        event = TestDomainEvent(aggregate_id=uuid4(), test_data="test")
+        event = TestDomainEventFixture(aggregate_id=uuid4(), test_data="test")
 
         async def mock_next(e):
             return e
@@ -183,7 +184,7 @@ class TestEventMiddleware:
     @pytest.mark.asyncio
     async def test_metrics_middleware(self):
         """Test metrics middleware."""
-        event = TestDomainEvent(aggregate_id=uuid4(), test_data="test")
+        event = TestDomainEventFixture(aggregate_id=uuid4(), test_data="test")
 
         async def mock_next(e):
             return e
@@ -196,7 +197,7 @@ class TestEventMiddleware:
             pass
 
 
-class TestMLEvents:
+class TestMLEventsValidation:
     """Test ML events to improve coverage."""
 
     def test_model_training_started_creation(self):
@@ -206,11 +207,15 @@ class TestMLEvents:
             aggregate_id=model_id,
             model_id=model_id,
             model_name="test_model",
+            model_type="random_forest",
+            training_data_size=1000,
             training_config={"epochs": 10},
         )
 
         assert event.model_id == model_id
         assert event.model_name == "test_model"
+        assert event.model_type == "random_forest"
+        assert event.training_data_size == 1000
         assert event.training_config == {"epochs": 10}
         assert event.event_type == "ModelTrainingStarted"
 
@@ -272,6 +277,8 @@ class TestMLEvents:
                 aggregate_id=uuid4(),  # Different from model_id
                 model_id=model_id,
                 model_name="test",
+                model_type="neural_network",
+                training_data_size=500,
                 training_config={},
             ),
             ModelTrainingCompleted(
@@ -304,12 +311,12 @@ class TestMLEvents:
             assert event.aggregate_id == model_id
 
 
-class TestEventHandlersAdvanced:
+class TestEventHandlersValidation:
     """Advanced tests for event handlers."""
 
     @pytest.mark.asyncio
-    async def test_log_handlers_with_mocks(self):
-        """Test log handlers with mocked dependencies."""
+    async def test_log_handlers_instantiation(self):
+        """Test log handlers instantiation."""
         handler = LogEventHandlers()
 
         # Test methods exist and can be called
@@ -317,8 +324,8 @@ class TestEventHandlersAdvanced:
         assert hasattr(handler, "handle_anomaly_detected")
 
     @pytest.mark.asyncio
-    async def test_incident_handlers_with_mocks(self):
-        """Test incident handlers with mocked dependencies."""
+    async def test_incident_handlers_instantiation(self):
+        """Test incident handlers instantiation."""
         handler = IncidentEventHandlers()
 
         # Test methods exist
@@ -326,8 +333,8 @@ class TestEventHandlersAdvanced:
         assert hasattr(handler, "handle_incident_resolved")
 
     @pytest.mark.asyncio
-    async def test_ml_handlers_with_mocks(self):
-        """Test ML handlers with mocked dependencies."""
+    async def test_ml_handlers_instantiation(self):
+        """Test ML handlers instantiation."""
         handler = MLEventHandlers()
 
         # Test methods exist
@@ -343,7 +350,7 @@ class TestEventIntegration:
         # Create components
         bus = EventBus()
         store = InMemoryEventStore()
-        event = TestDomainEvent(aggregate_id=uuid4(), test_data="integration_test")
+        event = TestDomainEventFixture(aggregate_id=uuid4(), test_data="integration_test")
 
         # Test that components can work together
         assert bus is not None
@@ -356,7 +363,7 @@ class TestEventIntegration:
 
     def test_event_serialization_coverage(self):
         """Test event serialization for coverage."""
-        event = TestDomainEvent(aggregate_id=uuid4(), test_data="serialization_test")
+        event = TestDomainEventFixture(aggregate_id=uuid4(), test_data="serialization_test")
 
         # Test event_data property
         event_data = event.event_data
@@ -365,4 +372,31 @@ class TestEventIntegration:
         assert "event_type" in event_data
         assert "aggregate_id" in event_data
         assert "occurred_at" in event_data
-        assert event_data["event_type"] == "TestDomainEvent"
+        assert event_data["event_type"] == "TestDomainEventFixture"
+
+
+# Helper function to create test events for edge cases
+def create_test_events():
+    """Factory function to create test events without class-level constructor issues."""
+    model_id = uuid4()
+
+    return [
+        TestDomainEventFixture(aggregate_id=uuid4(), test_data="test1"),
+        TestDomainEventFixture(aggregate_id=uuid4(), test_data="test2"),
+        ModelTrainingStarted(
+            aggregate_id=model_id,
+            model_id=model_id,
+            model_name="edge_case_model",
+            model_type="ensemble",
+            training_data_size=0,  # Edge case: zero size
+            training_config={},
+        ),
+    ]
+
+
+def test_event_creation_factory():
+    """Test event creation through factory function."""
+    events = create_test_events()
+    assert len(events) == 3
+    assert all(isinstance(event.aggregate_id, UUID) for event in events)
+    assert events[2].training_data_size == 0  # Edge case validation
