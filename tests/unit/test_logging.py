@@ -1,4 +1,5 @@
 """Тесты для модуля логирования."""
+
 import logging
 from unittest.mock import MagicMock, patch
 

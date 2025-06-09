@@ -1,4 +1,5 @@
 """Custom application exceptions with proper HTTP status codes."""
+
 from typing import Any, Dict, Optional
 
 

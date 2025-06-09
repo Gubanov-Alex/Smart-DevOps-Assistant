@@ -1,4 +1,5 @@
 """Integration tests for FastAPI application."""
+
 from unittest.mock import patch
 
 import pytest

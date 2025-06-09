@@ -1,4 +1,5 @@
 """ML model performance benchmark tests."""
+
 from typing import Any, Dict, List
 
 import numpy as np

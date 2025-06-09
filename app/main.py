@@ -1,4 +1,5 @@
 """FastAPI application factory and main entry point."""
+
 import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator

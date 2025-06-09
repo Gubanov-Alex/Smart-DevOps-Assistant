@@ -1,4 +1,5 @@
 """Тесты для доменных сущностей."""
+
 import datetime
 from uuid import UUID
 

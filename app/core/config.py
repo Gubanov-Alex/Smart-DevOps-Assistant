@@ -1,4 +1,5 @@
 """Application configuration management with Pydantic v2."""
+
 from functools import lru_cache
 from typing import Literal
 

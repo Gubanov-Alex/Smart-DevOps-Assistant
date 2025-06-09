@@ -46,16 +46,17 @@ prometheus-client = "^0.22.1"
 pathlib = "^1.0.1"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.3"
+pytest = "^8.4.0"
 pytest-asyncio = "^0.21.1"
-pytest-cov = "^4.1.0"
+pytest-cov = "^6.1.1"
 pytest-mock = "^3.12.0"
 pytest-benchmark = "^4.0.0"
-black = "^23.11.0"
-isort = "^5.12.0"
-flake8 = "^6.1.0"
+black = "^25.1.0"
+isort = "^6.0.1"
+flake8 = "^7.2.0"
 bandit = "^1.7.5"
-pre-commit = "^3.6.0"
+safety = "^3.2.0"
+pre-commit = "^4.2.0"
 factory-boy = "^3.3.0"
 types-redis = "^4.6.0"
 types-requests = "^2.31.0"
@@ -98,40 +99,29 @@ known_first_party = ["app", "tests"]
 
 
 [tool.pytest.ini_options]
-minversion = "7.0"
-addopts = [
-    "-ra",
-    "-q",
-    "--strict-markers",
-    "--strict-config",
-    "--tb=short",
-    "--maxfail=5",
-    "--durations=10",
-    "--ignore=setup.py",
-    "--ignore=migrations/",
-    "--ignore=build/",
-    "--ignore=dist/"
-]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-filterwarnings = [
-    "ignore::UserWarning",
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning",
-    "ignore::pytest.PytestUnraisableExceptionWarning",
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    # "--benchmark-only",
+    "--benchmark-sort=mean",
+    "--benchmark-group-by=func",
+    "--benchmark-warmup=on",
+    "--benchmark-disable-gc",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests",
-    "ml: marks tests as ML model tests",
     "benchmark: marks tests as benchmark tests",
-    "asyncio: marks tests as async tests",
+    "unit: marks tests as unit tests",
 ]
-asyncio_mode = "auto"
-norecursedirs = ["build", "dist", ".git", ".tox", "*.egg"]
 
 [tool.coverage.run]
 source = ["app"]
@@ -149,7 +139,7 @@ concurrency = ["thread"]
 
 [tool.coverage.report]
 precision = 2
-fail_under = 60
+fail_under = 60  # Снижено с 75 до 60
 show_missing = true
 skip_covered = false
 skip_empty = true

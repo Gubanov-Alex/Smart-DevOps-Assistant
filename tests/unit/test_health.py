@@ -1,4 +1,5 @@
 """Basic health check tests to ensure CI pipeline works."""
+
 import sys
 from typing import Any, Dict
 

@@ -1,4 +1,5 @@
 """Тесты для пользовательских исключений."""
+
 import pytest
 
 from app.core.exceptions import (

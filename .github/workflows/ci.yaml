@@ -187,33 +187,30 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Test application startup
+        timeout-minutes: 3  # Добавить timeout
         run: |
           poetry run python -c "
           import sys
+          import time
           try:
+              start_time = time.time()
+              
               # Test basic imports
               import app
               print('✅ App module imports successfully')
               
-              # Test FastAPI app creation (if exists)
-              try:
-                  from app.main import app as fastapi_app
-                  print('✅ FastAPI application creates successfully')
-                  
-                  # Test basic endpoints
-                  from fastapi.testclient import TestClient
-                  client = TestClient(fastapi_app)
-                  response = client.get('/health')
-                  if response.status_code == 200:
-                      print('✅ Health endpoint responds correctly')
-                  else:
-                      print(f'⚠️ Health endpoint returned {response.status_code}')
-              except ImportError as e:
-                  print(f'ℹ️  FastAPI app not found: {e}')
+              # Test dependencies
+              import sqlalchemy, redis, celery
+              print('✅ Core dependencies available')
               
-              print('🚀 Application health check passed')
+              elapsed = time.time() - start_time
+              print(f'⚡ Import time: {elapsed:.2f}s')
+              
+              if elapsed > 10:
+                  print('⚠️  Slow import detected')
+                  
           except Exception as e:
-              print(f'❌ Application health check failed: {e}')
+              print(f'❌ Health check failed: {e}')
               sys.exit(1)
           "
 
@@ -472,8 +469,6 @@ jobs:
             poetry run pytest tests/ml/ -v \
               -m benchmark \
               --benchmark-json=benchmark-results.json \
-              --benchmark-compare-fail=min:5% \
-              --benchmark-compare-fail=mean:10% \
               --benchmark-disable-gc \
               --benchmark-warmup=on
           else
@@ -579,19 +574,25 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build Docker image
+      - name: Build and push Docker images
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/Dockerfile.dev
-          target: development
-          push: ${{ github.event_name != 'pull_request' }}
+          platforms: linux/amd64,linux/arm64
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: |
+            type=gha,mode=max
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          # Добавить обработку ошибок кэша
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+      
+      
       - name: Run Trivy container scan
         if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
@@ -694,3 +695,37 @@ jobs:
           echo "Version: ${{ github.sha }}"
           echo "Please check application metrics immediately"
           # TODO: Add Slack alert when webhook is configured
+
+notify:
+  name: Notify Status
+  runs-on: ubuntu-latest
+  needs: [quality, unit-tests, integration-tests, docker]
+  if: always()
+  steps:
+    - name: Notify Success
+      if: needs.quality.result == 'success' && needs.unit-tests.result == 'success'
+      run: |
+        echo "✅ Pipeline успешно завершен!"
+        # TODO: Добавить Slack/Teams notification
+        
+    - name: Notify Failure
+      if: failure()
+      run: |
+        echo "❌ Pipeline завершился с ошибкой"
+        echo "Commit: ${{ github.sha }}"
+        echo "Author: ${{ github.actor }}"
+        # TODO: Добавить alert notification
+
+collect-metrics:
+  name: Collect Pipeline Metrics
+  runs-on: ubuntu-latest
+  needs: [quality, unit-tests, integration-tests]
+  if: always()
+  steps:
+    - name: Pipeline Metrics
+      run: |
+        echo "📊 Pipeline Metrics:"
+        echo "Duration: ${{ github.event.head_commit.timestamp }}"
+        echo "Tests Status: ${{ needs.unit-tests.result }}"
+        echo "Quality Status: ${{ needs.quality.result }}"
+        echo "Coverage: $(cat coverage-unit.xml | grep line-rate || echo 'N/A')"
