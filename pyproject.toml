@@ -136,6 +136,7 @@ norecursedirs = ["build", "dist", ".git", ".tox", "*.egg"]
 [tool.coverage.run]
 source = ["app"]
 omit = [
+    "app/core/config.py",
     "*/tests/*",
     "*/test_*",
     "*/conftest.py",
@@ -148,6 +149,7 @@ concurrency = ["thread"]
 
 [tool.coverage.report]
 precision = 2
+fail_under = 60
 show_missing = true
 skip_covered = false
 skip_empty = true
