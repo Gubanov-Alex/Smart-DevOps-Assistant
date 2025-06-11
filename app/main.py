@@ -106,7 +106,7 @@ def create_app() -> FastAPI:
     return app
 
 
-# Create app instance
+# Create an app instance
 app = create_app()
 
 
