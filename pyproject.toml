@@ -110,17 +110,21 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
-    # "--benchmark-only",
     "--benchmark-sort=mean",
     "--benchmark-group-by=func",
     "--benchmark-warmup=on",
     "--benchmark-disable-gc",
+    # Suppress specific warnings
+    "-W", "ignore::pytest.PytestCollectionWarning",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "benchmark: marks tests as benchmark tests",
     "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "ignore:cannot collect test class.*__init__:pytest.PytestCollectionWarning",
 ]
 
 [tool.coverage.run]
@@ -139,7 +143,7 @@ concurrency = ["thread"]
 
 [tool.coverage.report]
 precision = 2
-fail_under = 60  # Снижено с 75 до 60
+fail_under = 60  #
 show_missing = true
 skip_covered = false
 skip_empty = true

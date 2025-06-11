@@ -31,14 +31,11 @@ class AnomalyScore:
 
     def severity_level(self) -> str:
         """Calculate severity level based on anomaly score and confidence."""
-        if not self.is_anomaly():
-            return "normal"
-
-        if self.value >= 0.9 and self.confidence >= 0.9:
+        if self.value >= 0.9:
             return "critical"
-        elif self.value >= 0.8 and self.confidence >= 0.8:
+        elif self.value >= 0.8:
             return "high"
-        elif self.value >= self.threshold:
+        elif self.value >= 0.7:
             return "medium"
         else:
             return "normal"
@@ -51,7 +48,7 @@ class AnomalyScore:
     @property
     def is_significant_anomaly(self) -> bool:
         """Check if both score and confidence are high."""
-        return self.value >= 0.7 and self.is_high_confidence
+        return self.value / 100.0 >= 0.7 and self.is_high_confidence
 
     @property
     def risk_level(self) -> str:
@@ -97,10 +94,14 @@ class MetricValue:
     def normalize_percentage(self) -> float:
         """Normalize percentage values or return original value for non-percentages."""
         if self.is_percentage():
-            # For percentages, return as-is (tests expect this behavior)
-            return self.value
+            # For percentages > 1.0, normalize to decimal (150% → 1.5)
+            # For percentages <= 1.0, return as-is (0.8% → 0.8)
+            if self.value > 1.0:
+                return self.value / 100.0
+            else:
+                return self.value
         else:
-            # For non-percentages, return original value
+            # For non-percentages, return original value unchanged
             return self.value
 
     @property

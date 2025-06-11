@@ -1,6 +1,5 @@
 """Additional logging tests for coverage."""
 
-import logging
 from unittest.mock import MagicMock
 
 from app.core.logging import add_app_context, get_logger, log_request_response

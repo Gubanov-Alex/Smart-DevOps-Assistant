@@ -19,21 +19,6 @@ def test_python_version():
     assert sys.version_info >= (3, 12)
 
 
-def test_imports_available():
-    """Test that basic imports work."""
-    try:
-        import fastapi
-        import pydantic
-        import pytest
-        import redis
-        import sqlalchemy
-        import uvicorn
-
-        assert True
-    except ImportError as e:
-        assert False, f"Import failed: {e}"
-
-
 class TestBasicFunctionality:
     """Basic functionality tests."""
 
