@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, tests_*]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, tests_*]
   workflow_dispatch:
   schedule:
     - cron: '0 2 * * 0'
