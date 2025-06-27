@@ -61,7 +61,7 @@ class AnomalyScore:
             return "low"
 
     def __str__(self) -> str:
-        """String representation for logging."""
+        """Return string representation for logging."""
         return f"AnomalyScore(value={self.value:.2f}, confidence={self.confidence:.2f}, risk={self.risk_level})"
 
 
@@ -80,7 +80,14 @@ class MetricValue:
             raise ValueError("Metric name cannot be empty")
 
         # Allow negative values for certain metric types
-        negative_allowed_types = ["temperature", "balance", "change", "delta", "diff", "offset"]
+        negative_allowed_types = [
+            "temperature",
+            "balance",
+            "change",
+            "delta",
+            "diff",
+            "offset",
+        ]
 
         if self.value < 0 and not any(
             allowed_type in self.name.lower() for allowed_type in negative_allowed_types
@@ -124,7 +131,7 @@ class MetricValue:
         return self.unit.upper() in ["BYTES", "KB", "MB", "GB", "TB", "B"]
 
     def __str__(self) -> str:
-        """String representation with formatting."""
+        """Return string representation with formatting."""
         if self.is_percentage():
             return f"{self.value:.1f}%"
         elif self.is_time_based and self.value < 1 and self.unit.lower() in ["seconds", "s"]:
@@ -177,7 +184,7 @@ class SourceSystem:
         return f"{self.name}.{self.environment}"
 
     def full_identifier(self) -> str:
-        """Generate full identifier: environment.service_type.name"""
+        """Generate full identifier: environment.service_type.name."""
         return f"{self.environment}.{self.service_type}.{self.name}"
 
     def has_tag(self, tag: str) -> bool:
@@ -193,5 +200,5 @@ class SourceSystem:
         return True
 
     def __str__(self) -> str:
-        """String representation for logging."""
+        """Return string representation for logging."""
         return f"{self.name}[{self.environment}]"

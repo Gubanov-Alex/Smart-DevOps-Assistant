@@ -48,7 +48,8 @@ class Settings(BaseSettings):
 
     # Security
     secret_key: str = Field(
-        default="super-secret-key-change-in-production", description="Secret key for JWT tokens"
+        default="super-secret-key-change-in-production",
+        description="Secret key for JWT tokens",
     )
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30

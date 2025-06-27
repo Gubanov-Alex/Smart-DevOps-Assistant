@@ -9,7 +9,11 @@ from app.events.base import DomainEvent
 from app.events.event_bus import EventBus
 from app.events.event_store import InMemoryEventStore
 from app.events.handlers import IncidentEventHandlers, LogEventHandlers, MLEventHandlers
-from app.events.middleware import audit_middleware, logging_middleware, metrics_middleware
+from app.events.middleware import (
+    audit_middleware,
+    logging_middleware,
+    metrics_middleware,
+)
 from app.events.ml_events import (
     ModelDeployed,
     ModelPerformanceDegraded,

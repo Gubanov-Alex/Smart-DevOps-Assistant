@@ -10,7 +10,10 @@ class IEventStore(Protocol):
     """Event store interface."""
 
     async def save_events(
-        self, aggregate_id: UUID, events: List[DomainEvent], expected_version: Optional[int] = None
+        self,
+        aggregate_id: UUID,
+        events: List[DomainEvent],
+        expected_version: Optional[int] = None,
     ) -> None:
         """Save events to the store."""
         ...
@@ -23,13 +26,17 @@ class IEventStore(Protocol):
 
 
 class InMemoryEventStore:
-    """In-memory implementation of event store."""
+    """In-memory implementation of the event store."""
 
     def __init__(self) -> None:
+        """Initialize the in-memory event store."""
         self._events: dict[UUID, List[DomainEvent]] = {}
 
     async def save_events(
-        self, aggregate_id: UUID, events: List[DomainEvent], expected_version: Optional[int] = None
+        self,
+        aggregate_id: UUID,
+        events: List[DomainEvent],
+        expected_version: Optional[int] = None,
     ) -> None:
         """Save events to memory."""
         if aggregate_id not in self._events:

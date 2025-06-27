@@ -122,4 +122,4 @@ site/
 
 # Local configuration overrides
 local_settings.py
-.local/
+.local/!/.bandit

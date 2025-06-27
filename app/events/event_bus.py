@@ -19,6 +19,7 @@ class EventBus:
     """
 
     def __init__(self) -> None:
+        """Initialize the event bus."""
         self._handlers: Dict[Type[DomainEvent], List[Callable[[DomainEvent], Any]]] = defaultdict(
             list
         )

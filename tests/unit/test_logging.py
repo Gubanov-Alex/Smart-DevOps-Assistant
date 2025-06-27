@@ -83,7 +83,14 @@ class MetricValue:
             raise ValueError("Metric name cannot be empty")
 
         # Allow negative values for certain metric types
-        negative_allowed_types = ["temperature", "balance", "change", "delta", "diff", "offset"]
+        negative_allowed_types = [
+            "temperature",
+            "balance",
+            "change",
+            "delta",
+            "diff",
+            "offset",
+        ]
 
         if self.value < 0 and not any(
             allowed_type in self.name.lower() for allowed_type in negative_allowed_types

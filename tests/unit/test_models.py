@@ -26,5 +26,11 @@ class TestLogModel:
 
         # This would fail with actual Pydantic model
         # For now just test the validation logic
-        assert invalid_data["level"] not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        assert invalid_data["level"] not in [
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR",
+            "CRITICAL",
+        ]
         assert len(invalid_data["message"]) == 0

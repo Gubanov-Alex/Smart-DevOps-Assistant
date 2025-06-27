@@ -79,10 +79,16 @@ class TestLogEntry:
         """Проверка метода is_error_level."""
         # Проверка неошибочных уровней
         log_debug = LogEntry(
-            message="Debug", timestamp=datetime.datetime.now(), level=LogLevel.DEBUG, source="test"
+            message="Debug",
+            timestamp=datetime.datetime.now(),
+            level=LogLevel.DEBUG,
+            source="test",
         )
         log_info = LogEntry(
-            message="Info", timestamp=datetime.datetime.now(), level=LogLevel.INFO, source="test"
+            message="Info",
+            timestamp=datetime.datetime.now(),
+            level=LogLevel.INFO,
+            source="test",
         )
         log_warning = LogEntry(
             message="Warning",
@@ -93,7 +99,10 @@ class TestLogEntry:
 
         # Проверка ошибочных уровней
         log_error = LogEntry(
-            message="Error", timestamp=datetime.datetime.now(), level=LogLevel.ERROR, source="test"
+            message="Error",
+            timestamp=datetime.datetime.now(),
+            level=LogLevel.ERROR,
+            source="test",
         )
         log_critical = LogEntry(
             message="Critical",
