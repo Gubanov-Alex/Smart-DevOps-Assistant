@@ -20,10 +20,7 @@ class TestAutoEncoderAnomalyDetector:
     def test_model_with_custom_parameters(self):
         """Test model with custom parameters."""
         model = AutoEncoderAnomalyDetector(
-            input_dim=20,
-            encoding_dim=16,
-            hidden_dims=[64, 32, 16],
-            dropout=0.3
+            input_dim=20, encoding_dim=16, hidden_dims=[64, 32, 16], dropout=0.3
         )
         assert model.input_dim == 20
         assert model.encoding_dim == 16
@@ -92,10 +89,7 @@ class TestAutoEncoderAnomalyDetector:
     def test_get_model_info(self):
         """Test model info retrieval."""
         model = AutoEncoderAnomalyDetector(
-            input_dim=15,
-            encoding_dim=8,
-            hidden_dims=[32, 16],
-            dropout=0.25
+            input_dim=15, encoding_dim=8, hidden_dims=[32, 16], dropout=0.25
         )
 
         info = model.get_model_info()
@@ -140,7 +134,7 @@ class TestLogClassifierNN:
             hidden_dim=128,
             num_layers=3,
             dropout=0.4,
-            num_classes=10
+            num_classes=10,
         )
         assert model.vocab_size == 5000
         assert model.embedding_dim == 256
@@ -209,7 +203,7 @@ class TestLogClassifierNN:
             embedding_dim=64,
             hidden_dim=32,
             num_layers=1,
-            num_classes=3
+            num_classes=3,
         )
 
         info = model.get_model_info()
@@ -235,7 +229,7 @@ class TestLogClassifierNN:
 
         # Check LSTM weights
         for name, param in model.lstm.named_parameters():
-            if 'weight' in name:
+            if "weight" in name:
                 assert not torch.all(param == 0)
 
     def test_parameter_count(self):
@@ -330,5 +324,9 @@ class TestModelIntegration:
         classifier_params = classifier.get_parameter_count()
 
         # Check that parameter counts are reasonable (not excessively large)
-        assert anomaly_params < 1_000_000, f"Anomaly detector too large: {anomaly_params} params"
-        assert classifier_params < 5_000_000, f"Classifier too large: {classifier_params} params"
+        assert (
+            anomaly_params < 1_000_000
+        ), f"Anomaly detector too large: {anomaly_params} params"
+        assert (
+            classifier_params < 5_000_000
+        ), f"Classifier too large: {classifier_params} params"

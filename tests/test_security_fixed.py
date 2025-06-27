@@ -179,12 +179,18 @@ class TestTextProcessorSecurity:
         processor = LogTextProcessor()
 
         # Тест с очень большим количеством сообщений
-        large_dataset = ["test message"] * 1_500_000  # Больше 1M для срабатывания warning
+        large_dataset = [
+            "test message"
+        ] * 1_500_000  # Больше 1M для срабатывания warning
 
         # Должно обрабатываться без ошибок благодаря батчингу
-        with patch("app.infrastructure.ml.preprocessing.text_processor.logger") as mock_logger:
+        with patch(
+            "app.infrastructure.ml.preprocessing.text_processor.logger"
+        ) as mock_logger:
             # Передаем ВЕСЬ большой датасет, а не обрезанный
-            processor.build_vocabulary(large_dataset)  # Полный датасет для срабатывания warning
+            processor.build_vocabulary(
+                large_dataset
+            )  # Полный датасет для срабатывания warning
 
             # Проверяем что логируются предупреждения о больших датасетах
             mock_logger.warning.assert_called()

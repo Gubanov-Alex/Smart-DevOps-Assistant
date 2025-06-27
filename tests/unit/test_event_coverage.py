@@ -354,7 +354,9 @@ class TestEventIntegration:
         # Create components
         bus = EventBus()
         store = InMemoryEventStore()
-        event = TestDomainEventFixture(aggregate_id=uuid4(), test_data="integration_test")
+        event = TestDomainEventFixture(
+            aggregate_id=uuid4(), test_data="integration_test"
+        )
 
         # Test that components can work together
         assert bus is not None
@@ -367,7 +369,9 @@ class TestEventIntegration:
 
     def test_event_serialization_coverage(self):
         """Test event serialization for coverage."""
-        event = TestDomainEventFixture(aggregate_id=uuid4(), test_data="serialization_test")
+        event = TestDomainEventFixture(
+            aggregate_id=uuid4(), test_data="serialization_test"
+        )
 
         # Test event_data property
         event_data = event.event_data

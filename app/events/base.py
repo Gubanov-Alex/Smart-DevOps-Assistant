@@ -16,7 +16,9 @@ class DomainEvent:
 
     aggregate_id: UUID
     event_id: UUID = field(default_factory=uuid4, init=False)
-    occurred_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc), init=False)
+    occurred_at: datetime = field(
+        default_factory=lambda: datetime.now(timezone.utc), init=False
+    )
     version: int = field(default=1, init=False)
     event_type: str = field(default="", init=False)
     metadata: Dict[str, Any] = field(default_factory=dict, init=False)

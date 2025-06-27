@@ -24,7 +24,9 @@ class Settings(BaseSettings):
     # API Settings
     api_title: str = "Smart DevOps Assistant"
     api_version: str = "0.1.0"
-    api_description: str = "AI-powered DevOps assistant for log analysis and anomaly detection"
+    api_description: str = (
+        "AI-powered DevOps assistant for log analysis and anomaly detection"
+    )
 
     # Database
     database_url: PostgresDsn = Field(
@@ -63,7 +65,9 @@ class Settings(BaseSettings):
     log_format: str = "json"
 
     # Health Check
-    health_check_timeout: int = Field(default=30, description="Health check timeout in seconds")
+    health_check_timeout: int = Field(
+        default=30, description="Health check timeout in seconds"
+    )
 
     @property
     def is_development(self) -> bool:

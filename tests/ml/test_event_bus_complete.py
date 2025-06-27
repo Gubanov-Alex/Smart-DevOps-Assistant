@@ -1,14 +1,15 @@
 """Complete tests for Event Bus to improve coverage."""
 
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime
 from typing import List
+from unittest.mock import AsyncMock, MagicMock
 
-from app.events.event_bus import EventBus, EventSubscription
+import pytest
+
 from app.events.base import DomainEvent
-from app.events.log_events import LogEntryCreated, AnomalyDetected
+from app.events.event_bus import EventBus, EventSubscription
+from app.events.log_events import AnomalyDetected, LogEntryCreated
 from app.events.middleware import AuditMiddleware, LoggingMiddleware, MetricsMiddleware
 
 
@@ -16,10 +17,7 @@ class TestEvent(DomainEvent):
     """Test event for testing purposes."""
 
     def __init__(self, test_data: str):
-        super().__init__(
-            event_type="test.event",
-            data={"test_data": test_data}
-        )
+        super().__init__(event_type="test.event", data={"test_data": test_data})
 
 
 class TestEventBus:
@@ -247,7 +245,7 @@ class TestEventBus:
             "middleware2_before",
             "handler",
             "middleware2_after",
-            "middleware1_after"
+            "middleware1_after",
         ]
         assert execution_order == expected_order
 
@@ -428,14 +426,11 @@ class TestEventBus:
             message="Test log",
             level="INFO",
             timestamp=datetime.now(),
-            source="test"
+            source="test",
         )
 
         anomaly_event = AnomalyDetected(
-            log_id="456",
-            anomaly_score=0.8,
-            threshold=0.5,
-            detected_at=datetime.now()
+            log_id="456", anomaly_score=0.8, threshold=0.5, detected_at=datetime.now()
         )
 
         await bus.publish(log_event)
@@ -511,11 +506,9 @@ class TestEventBusIntegration:
         logging_middleware = LoggingMiddleware()
         metrics_middleware = MetricsMiddleware()
 
-        bus = EventBus(middleware=[
-            audit_middleware,
-            logging_middleware,
-            metrics_middleware
-        ])
+        bus = EventBus(
+            middleware=[audit_middleware, logging_middleware, metrics_middleware]
+        )
 
         events_processed = []
 

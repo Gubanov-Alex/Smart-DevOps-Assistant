@@ -1,14 +1,15 @@
 """Tests for ML Service to improve coverage."""
 
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
 import torch
-from unittest.mock import  MagicMock, patch
-from pathlib import Path
 
-from app.services.ml_service import MLService
 from app.infrastructure.ml.models.anomaly_detector import AutoEncoderAnomalyDetector
 from app.infrastructure.ml.models.log_classifier import LogClassifierNN
 from app.infrastructure.ml.preprocessing.text_processor import LogTextProcessor
+from app.services.ml_service import MLService
 
 
 class TestMLService:
@@ -24,32 +25,32 @@ class TestMLService:
         # Configure mock return values
         anomaly_detector.detect_anomalies.return_value = (
             torch.tensor([0.1, 0.8, 0.3]),  # scores
-            torch.tensor([False, True, False])  # is_anomaly
+            torch.tensor([False, True, False]),  # is_anomaly
         )
 
         classifier.predict.return_value = (
             torch.tensor([0, 2, 1]),  # predictions
-            torch.tensor([0.9, 0.7, 0.8])  # confidences
+            torch.tensor([0.9, 0.7, 0.8]),  # confidences
         )
 
         text_processor.encode_batch.return_value = (
             torch.randint(0, 100, (3, 20)),  # encoded
-            torch.tensor([15, 18, 12])  # lengths
+            torch.tensor([15, 18, 12]),  # lengths
         )
 
         return {
-            'anomaly_detector': anomaly_detector,
-            'classifier': classifier,
-            'text_processor': text_processor
+            "anomaly_detector": anomaly_detector,
+            "classifier": classifier,
+            "text_processor": text_processor,
         }
 
     @pytest.fixture
     def ml_service(self, mock_models):
         """Create an MLService instance with mock models."""
         service = MLService()
-        service.anomaly_detector = mock_models['anomaly_detector']
-        service.classifier = mock_models['classifier']
-        service.text_processor = mock_models['text_processor']
+        service.anomaly_detector = mock_models["anomaly_detector"]
+        service.classifier = mock_models["classifier"]
+        service.text_processor = mock_models["text_processor"]
         service.models_loaded = True
         return service
 
@@ -66,10 +67,12 @@ class TestMLService:
         """Test successful model loading."""
         service = MLService()
 
-        with patch('app.services.ml_service.AutoEncoderAnomalyDetector') as mock_anomaly, \
-                patch('app.services.ml_service.LogClassifierNN') as mock_classifier, \
-                patch('app.services.ml_service.LogTextProcessor') as mock_processor, \
-                patch.object(Path, 'exists', return_value=True):
+        with (
+            patch("app.services.ml_service.AutoEncoderAnomalyDetector") as mock_anomaly,
+            patch("app.services.ml_service.LogClassifierNN") as mock_classifier,
+            patch("app.services.ml_service.LogTextProcessor") as mock_processor,
+            patch.object(Path, "exists", return_value=True),
+        ):
             mock_anomaly_instance = MagicMock()
             mock_classifier_instance = MagicMock()
             mock_processor_instance = MagicMock()
@@ -90,7 +93,7 @@ class TestMLService:
         """Test model loading when files don't exist."""
         service = MLService()
 
-        with patch.object(Path, 'exists', return_value=False):
+        with patch.object(Path, "exists", return_value=False):
             await service.load_models()
 
             # Should still create models even if checkpoint files don't exist
@@ -102,7 +105,7 @@ class TestMLService:
         log_messages = [
             "INFO: Application started successfully",
             "ERROR: Database connection failed",
-            "WARNING: Memory usage high"
+            "WARNING: Memory usage high",
         ]
 
         result = await ml_service.analyze_logs(log_messages)
@@ -171,13 +174,13 @@ class TestMLService:
         ml_service.anomaly_detector.get_model_info.return_value = {
             "model_name": "AnomalyDetector",
             "version": "1.0.0",
-            "parameter_count": 1000
+            "parameter_count": 1000,
         }
 
         ml_service.classifier.get_model_info.return_value = {
             "model_name": "LogClassifier",
             "version": "1.0.0",
-            "parameter_count": 5000
+            "parameter_count": 5000,
         }
 
         info = await ml_service.get_model_info()
@@ -203,10 +206,16 @@ class TestMLService:
         # Create a large number of log messages
         large_log_batch = [f"Log message {i}" for i in range(1000)]
 
-        with patch.object(ml_service, '_process_batch') as mock_process:
+        with patch.object(ml_service, "_process_batch") as mock_process:
             mock_process.return_value = {
-                "anomaly_detection": {"scores": [0.1] * 1000, "anomalies": [False] * 1000},
-                "classification": {"predictions": [0] * 1000, "confidences": [0.9] * 1000}
+                "anomaly_detection": {
+                    "scores": [0.1] * 1000,
+                    "anomalies": [False] * 1000,
+                },
+                "classification": {
+                    "predictions": [0] * 1000,
+                    "confidences": [0.9] * 1000,
+                },
             }
 
             result = await ml_service.analyze_logs(large_log_batch)
@@ -217,7 +226,9 @@ class TestMLService:
     async def test_error_handling_in_analysis(self, ml_service):
         """Test error handling during analysis."""
         # Make the anomaly detector raise an exception
-        ml_service.anomaly_detector.detect_anomalies.side_effect = Exception("Model error")
+        ml_service.anomaly_detector.detect_anomalies.side_effect = Exception(
+            "Model error"
+        )
 
         with pytest.raises(Exception):
             await ml_service.detect_anomalies(["test message"])
@@ -230,7 +241,7 @@ class TestMLService:
         # Configure text processor to return clean data
         ml_service.text_processor.encode_batch.return_value = (
             torch.randint(0, 100, (2, 10)),
-            torch.tensor([8, 10])
+            torch.tensor([8, 10]),
         )
 
         result = await ml_service.analyze_logs(log_messages)
@@ -252,11 +263,7 @@ class TestMLService:
         """Test handling concurrent analysis requests."""
         import asyncio
 
-        log_batches = [
-            ["Message batch 1"],
-            ["Message batch 2"],
-            ["Message batch 3"]
-        ]
+        log_batches = [["Message batch 1"], ["Message batch 2"], ["Message batch 3"]]
 
         # Run multiple analysis requests concurrently
         tasks = [ml_service.analyze_logs(batch) for batch in log_batches]
@@ -273,7 +280,7 @@ class TestMLService:
         log_messages = ["Test message"]
 
         # Mock performance tracking
-        with patch('time.time', side_effect=[0.0, 0.1, 0.2, 0.3]):  # Mock timing
+        with patch("time.time", side_effect=[0.0, 0.1, 0.2, 0.3]):  # Mock timing
             result = await ml_service.analyze_logs(log_messages)
 
             # Check if performance metrics are included
@@ -284,7 +291,9 @@ class TestMLService:
     def test_memory_management(self, ml_service):
         """Test memory management during processing."""
         # Test that tensors are properly cleaned up
-        initial_memory = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
+        initial_memory = (
+            torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
+        )
 
         # Process some data
         with torch.no_grad():
@@ -309,11 +318,13 @@ class TestMLServiceEdgeCases:
         # Create extremely long message
         very_long_message = "A" * 50000
 
-        with patch.object(service, 'models_loaded', True), \
-                patch.object(service, 'text_processor') as mock_processor:
+        with (
+            patch.object(service, "models_loaded", True),
+            patch.object(service, "text_processor") as mock_processor,
+        ):
             mock_processor.encode_batch.return_value = (
                 torch.randint(0, 100, (1, 128)),  # Truncated to max length
-                torch.tensor([128])
+                torch.tensor([128]),
             )
 
             # Should handle long messages without crashing
@@ -330,12 +341,12 @@ class TestMLServiceEdgeCases:
             "Message with émojis 🚀🔥",
             "Unicode test: ñáéíóú",
             "Special chars: @#$%^&*()",
-            "Mixed: 中文测试"
+            "Mixed: 中文测试",
         ]
 
         service.text_processor.encode_batch.return_value = (
             torch.randint(0, 100, (4, 20)),
-            torch.tensor([15, 12, 18, 10])
+            torch.tensor([15, 12, 18, 10]),
         )
 
         #

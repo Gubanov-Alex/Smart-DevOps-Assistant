@@ -75,7 +75,9 @@ class TestExceptions:
     def test_external_service_error(self):
         """Проверка исключения ExternalServiceError."""
         exception = ExternalServiceError("API Service", "Connection timeout")
-        assert "External service 'API Service' error: Connection timeout" in str(exception)
+        assert "External service 'API Service' error: Connection timeout" in str(
+            exception
+        )
         assert exception.status_code == 502
         assert exception.error_code == "EXTERNAL_SERVICE_ERROR"
         assert exception.details == {"service": "API Service"}
