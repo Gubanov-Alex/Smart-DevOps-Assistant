@@ -18,13 +18,13 @@ class LogClassifierNN(BaseMLModel):
     """
 
     def __init__(
-            self,
-            vocab_size: int,
-            embedding_dim: int = 128,
-            hidden_dim: int = 64,
-            num_layers: int = 2,
-            dropout: float = 0.3,
-            num_classes: int = 5  # LogLevel enum count
+        self,
+        vocab_size: int,
+        embedding_dim: int = 128,
+        hidden_dim: int = 64,
+        num_layers: int = 2,
+        dropout: float = 0.3,
+        num_classes: int = 5,  # LogLevel enum count
     ):
         """Initialize the log classifier model."""
         super().__init__("LogClassifier", "1.0.0")
@@ -45,7 +45,7 @@ class LogClassifierNN(BaseMLModel):
             num_layers,
             batch_first=True,
             dropout=dropout if num_layers > 1 else 0,
-            bidirectional=True
+            bidirectional=True,
         )
 
         # Attention mechanism
@@ -53,7 +53,7 @@ class LogClassifierNN(BaseMLModel):
             embed_dim=hidden_dim * 2,  # bidirectional
             num_heads=8,
             dropout=dropout,
-            batch_first=True
+            batch_first=True,
         )
 
         # Classification head
@@ -64,7 +64,7 @@ class LogClassifierNN(BaseMLModel):
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hidden_dim // 2, num_classes)
+            nn.Linear(hidden_dim // 2, num_classes),
         )
 
         # Initialize weights
@@ -73,9 +73,9 @@ class LogClassifierNN(BaseMLModel):
     def _init_weights(self) -> None:
         """Initialize model weights using Xavier initialization."""
         for name, param in self.named_parameters():
-            if 'weight' in name and param.dim() > 1:
+            if "weight" in name and param.dim() > 1:
                 nn.init.xavier_uniform_(param)
-            elif 'bias' in name:
+            elif "bias" in name:
                 nn.init.constant_(param, 0.0)
 
     def forward(self, x: torch.Tensor, lengths: torch.Tensor = None) -> torch.Tensor:
@@ -116,7 +116,9 @@ class LogClassifierNN(BaseMLModel):
 
         return logits
 
-    def predict_proba(self, x: torch.Tensor, lengths: torch.Tensor = None) -> torch.Tensor:
+    def predict_proba(
+        self, x: torch.Tensor, lengths: torch.Tensor = None
+    ) -> torch.Tensor:
         """Get class probabilities."""
         self.eval()
         with torch.no_grad():
@@ -124,7 +126,9 @@ class LogClassifierNN(BaseMLModel):
             probabilities = F.softmax(logits, dim=1)
         return probabilities
 
-    def predict(self, x: torch.Tensor, lengths: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
+    def predict(
+        self, x: torch.Tensor, lengths: torch.Tensor = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get predictions and confidence scores."""
         probabilities = self.predict_proba(x, lengths)
         predictions = torch.argmax(probabilities, dim=1)
@@ -144,5 +148,5 @@ class LogClassifierNN(BaseMLModel):
             "num_classes": self.num_classes,
             "parameter_count": self.get_parameter_count(),
             "is_trained": self.is_trained,
-            "training_epochs": len(self.training_history)
+            "training_epochs": len(self.training_history),
         }

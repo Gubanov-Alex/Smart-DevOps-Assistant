@@ -316,3 +316,154 @@ doctest: ## Run doctests
 	@echo "$(BLUE)Running doctests...$(NC)"
 	@poetry run python -m doctest app/**/*.py -v || echo "$(YELLOW)Some doctests may have failed$(NC)"
 	@echo "$(GREEN)✅ Doctests completed$(NC)"
+
+# Database Management Commands for existing docker-compose.yaml
+# Add these to your existing Makefile after line with "update-deps:"
+
+## Database Services
+db-up: ## Start database services (PostgreSQL, Redis)
+	@echo "$(BLUE)Starting database services...$(NC)"
+	@docker-compose up -d postgres redis
+	@echo "$(YELLOW)⏳ Waiting for database to be ready...$(NC)"
+	@sleep 15
+	@echo "$(GREEN)✅ Database services started$(NC)"
+	@echo "$(BLUE)Database connection: postgresql://devops_user:devops_pass@localhost:5433/devops_assistant$(NC)"
+
+db-down: ## Stop database services
+	@echo "$(BLUE)Stopping database services...$(NC)"
+	@docker-compose down
+	@echo "$(GREEN)✅ Database services stopped$(NC)"
+
+db-full: ## Start all services including monitoring
+	@echo "$(BLUE)Starting all services...$(NC)"
+	@docker-compose up -d
+	@echo "$(GREEN)✅ All services started$(NC)"
+
+db-logs: ## Show database logs
+	@echo "$(BLUE)Showing database logs...$(NC)"
+	@docker-compose logs -f postgres
+
+db-shell: ## Connect to PostgreSQL shell
+	@echo "$(BLUE)Connecting to PostgreSQL shell...$(NC)"
+	@docker-compose exec postgres psql -U devops_user -d devops_assistant
+
+db-status: ## Check database connection status
+	@echo "$(BLUE)Checking database status...$(NC)"
+	@docker ps | grep postgres && echo "$(GREEN)✅ PostgreSQL container running$(NC)" || echo "$(RED)❌ PostgreSQL not running$(NC)"
+	@docker ps | grep redis && echo "$(GREEN)✅ Redis container running$(NC)" || echo "$(RED)❌ Redis not running$(NC)"
+	@psql postgresql://devops_user:devops_pass@localhost:5433/devops_assistant -c "SELECT version();" 2>/dev/null && echo "$(GREEN)✅ Database connection OK$(NC)" || echo "$(YELLOW)⚠️ Database connection failed$(NC)"
+
+## Database Migrations
+db-init: ## Initialize Alembic (run once)
+	@echo "$(BLUE)Initializing Alembic migrations...$(NC)"
+	@poetry run alembic init alembic || echo "$(YELLOW)Alembic may already be initialized$(NC)"
+	@echo "$(GREEN)✅ Alembic initialized$(NC)"
+
+db-create-migration: ## Create new migration with autogenerate
+	@echo "$(BLUE)Creating new migration...$(NC)"
+	@export DATABASE_URL_SYNC="postgresql://devops_user:devops_pass@localhost:5433/devops_assistant" && \
+		poetry run alembic revision --autogenerate -m "$(if $(m),$(m),Auto-generated migration)"
+	@echo "$(GREEN)✅ Migration created$(NC)"
+
+db-migrate: db-up ## Run database migrations
+	@echo "$(BLUE)Running database migrations...$(NC)"
+	@sleep 10  # Give database more time to start
+	@export DATABASE_URL_SYNC="postgresql://devops_user:devops_pass@localhost:5433/devops_assistant" && \
+		poetry run alembic upgrade head
+	@echo "$(GREEN)✅ Database migrations completed$(NC)"
+
+db-upgrade: ## Apply migrations to database
+	@echo "$(BLUE)Applying migrations...$(NC)"
+	@export DATABASE_URL_SYNC="postgresql://devops_user:devops_pass@localhost:5433/devops_assistant" && \
+		poetry run alembic upgrade head
+	@echo "$(GREEN)✅ Migrations applied$(NC)"
+
+db-downgrade: ## Downgrade database by one migration
+	@echo "$(BLUE)Downgrading database...$(NC)"
+	@export DATABASE_URL_SYNC="postgresql://devops_user:devops_pass@localhost:5433/devops_assistant" && \
+		poetry run alembic downgrade -1
+	@echo "$(GREEN)✅ Database downgraded$(NC)"
+
+db-history: ## Show migration history
+	@echo "$(BLUE)Migration history:$(NC)"
+	@export DATABASE_URL_SYNC="postgresql://devops_user:devops_pass@localhost:5433/devops_assistant" && \
+		poetry run alembic history --verbose
+
+db-current: ## Show current migration
+	@echo "$(BLUE)Current migration:$(NC)"
+	@export DATABASE_URL_SYNC="postgresql://devops_user:devops_pass@localhost:5433/devops_assistant" && \
+		poetry run alembic current
+
+db-reset: ## Reset database (WARNING: destroys all data)
+	@echo "$(RED)⚠️  This will destroy all database data!$(NC)"
+	@echo "$(YELLOW)Are you sure? Type 'yes' to continue:$(NC)" && read ans && [ "$$ans" = "yes" ]
+	@echo "$(BLUE)Resetting database...$(NC)"
+	@docker-compose down -v
+	@$(MAKE) db-up
+	@sleep 15
+	@$(MAKE) db-migrate
+	@echo "$(GREEN)✅ Database reset complete$(NC)"
+
+## Database Tools
+seed-db: db-up ## Seed database with test data
+	@echo "$(BLUE)Seeding database with test data...$(NC)"
+	@sleep 10  # Ensure DB is ready
+	@export DATABASE_URL_SYNC="postgresql://devops_user:devops_pass@localhost:5433/devops_assistant" && \
+		poetry run python scripts/seed_database.py || echo "$(YELLOW)Seeding script may not exist$(NC)"
+	@echo "$(GREEN)✅ Database seeded$(NC)"
+
+backup-db: ## Create database backup
+	@echo "$(BLUE)Creating database backup...$(NC)"
+	@mkdir -p backups/db
+	@docker-compose exec postgres pg_dump -U devops_user devops_assistant > backups/db/backup_$$(date +%Y%m%d_%H%M%S).sql
+	@echo "$(GREEN)✅ Backup created in backups/db/$(NC)"
+
+restore-db: ## Restore database from backup (specify BACKUP_FILE=filename)
+	@echo "$(BLUE)Restoring database from backup...$(NC)"
+	@test -n "$(BACKUP_FILE)" || (echo "$(RED)Please specify BACKUP_FILE=filename$(NC)" && exit 1)
+	@test -f "$(BACKUP_FILE)" || (echo "$(RED)Backup file $(BACKUP_FILE) not found$(NC)" && exit 1)
+	@docker-compose exec -T postgres psql -U devops_user devops_assistant < $(BACKUP_FILE)
+	@echo "$(GREEN)✅ Database restored from $(BACKUP_FILE)$(NC)"
+
+## Environment Setup
+create-env: ## Create .env file with correct database settings
+	@echo "$(BLUE)Creating .env file...$(NC)"
+	@test -f .env && echo "$(YELLOW).env already exists$(NC)" || ( \
+		echo "# Smart DevOps Assistant Environment Configuration" > .env && \
+		echo "DEBUG=true" >> .env && \
+		echo "LOG_LEVEL=INFO" >> .env && \
+		echo "DATABASE_URL=postgresql+asyncpg://devops_user:devops_pass@localhost:5433/devops_assistant" >> .env && \
+		echo "DATABASE_URL_SYNC=postgresql://devops_user:devops_pass@localhost:5433/devops_assistant" >> .env && \
+		echo "REDIS_URL=redis://localhost:6380/0" >> .env && \
+		echo "SECRET_KEY=dev-secret-key-change-in-production" >> .env \
+	)
+	@echo "$(GREEN)✅ .env file created with correct database settings$(NC)"
+
+## Quick Setup
+quick-start: setup-dirs create-env db-up db-create-migration db-migrate seed-db ## Complete setup for new developers
+	@echo ""
+	@echo "$(GREEN)🚀 Quick start complete!$(NC)"
+	@echo ""
+	@echo "$(BLUE)Services available:$(NC)"
+	@echo "• API: http://localhost:8000"
+	@echo "• PostgreSQL: localhost:5433"
+	@echo "• Redis: localhost:6380"
+	@echo "• Grafana: http://localhost:3000 (admin/admin)"
+	@echo "• Prometheus: http://localhost:9090"
+	@echo ""
+	@echo "$(BLUE)Next steps:$(NC)"
+	@echo "1. Run 'make dev' to start the application"
+	@echo "2. Visit http://localhost:8000/docs for API documentation"
+	@echo ""
+
+dev-api: ## Start API development server
+	@echo "$(BLUE)Starting API development server...$(NC)"
+	@export DATABASE_URL="postgresql+asyncpg://devops_user:devops_pass@localhost:5433/devops_assistant" && \
+		export REDIS_URL="redis://localhost:6380/0" && \
+		poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+dev-with-services: db-up ## Start API with all supporting services
+	@echo "$(BLUE)Starting development environment...$(NC)"
+	@$(MAKE) dev-api &
+	@echo "$(GREEN)✅ Development environment started$(NC)"
+	@echo "$(BLUE)API will be available at: http://localhost:8000$(NC)"

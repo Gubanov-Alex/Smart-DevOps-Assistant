@@ -3,6 +3,7 @@ Base ML model classes with security enhancements.
 
 This module provides secure base classes for all ML models in the application.
 """
+
 import abc
 import hashlib
 import logging
@@ -28,7 +29,7 @@ class BaseMLModel(nn.Module, abc.ABC):
     Interview talking point: Production-ready model loading with security
     """
 
-    ALLOWED_EXTENSIONS = {'.pt', '.pth', '.ckpt'}
+    ALLOWED_EXTENSIONS = {".pt", ".pth", ".ckpt"}
     MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
 
     def __init__(self, model_name: str, version: str = "1.0.0"):
@@ -96,9 +97,7 @@ class BaseMLModel(nn.Module, abc.ABC):
             raise ModelSecurityError(f"Failed to calculate file hash: {e}")
 
     def save_checkpoint(
-            self,
-            path: Union[str, Path],
-            metadata: Optional[Dict[str, Any]] = None
+        self, path: Union[str, Path], metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Save model checkpoint with metadata and integrity check."""
         path = Path(path)
@@ -119,12 +118,12 @@ class BaseMLModel(nn.Module, abc.ABC):
             "parameter_count": self.get_parameter_count(),
             "model_hash": self._model_hash,
             "pytorch_version": torch.__version__,
-            "metadata": metadata or {}
+            "metadata": metadata or {},
         }
 
         try:
             # Безопасное сохранение с проверкой прав доступа
-            temp_path = path.with_suffix(path.suffix + '.tmp')
+            temp_path = path.with_suffix(path.suffix + ".tmp")
             torch.save(checkpoint, temp_path)
             temp_path.replace(path)  # Атомарная операция
 
@@ -138,10 +137,10 @@ class BaseMLModel(nn.Module, abc.ABC):
             raise ModelSecurityError(f"Failed to save model checkpoint: {e}")
 
     def load_checkpoint(
-            self,
-            path: Union[str, Path],
-            expected_hash: Optional[str] = None,
-            strict: bool = True
+        self,
+        path: Union[str, Path],
+        expected_hash: Optional[str] = None,
+        strict: bool = True,
     ) -> Dict[str, Any]:
         """
         Load model checkpoint with security validation.
@@ -170,7 +169,7 @@ class BaseMLModel(nn.Module, abc.ABC):
                 checkpoint = torch.load(
                     path,
                     map_location="cpu",
-                    weights_only=True  # Критически важно для безопасности!
+                    weights_only=True,  # Критически важно для безопасности!
                 )
         except Exception as e:
             logger.error(f"Failed to load checkpoint from {path}: {e}")
@@ -180,11 +179,16 @@ class BaseMLModel(nn.Module, abc.ABC):
         required_keys = {"model_state_dict", "model_name", "version"}
         if not all(key in checkpoint for key in required_keys):
             missing_keys = required_keys - set(checkpoint.keys())
-            raise ModelSecurityError(f"Invalid checkpoint format. Missing keys: {missing_keys}")
+            raise ModelSecurityError(
+                f"Invalid checkpoint format. Missing keys: {missing_keys}"
+            )
 
         # Проверка совместимости версий PyTorch
         checkpoint_pytorch_version = checkpoint.get("pytorch_version")
-        if checkpoint_pytorch_version and checkpoint_pytorch_version != torch.__version__:
+        if (
+            checkpoint_pytorch_version
+            and checkpoint_pytorch_version != torch.__version__
+        ):
             logger.warning(
                 f"PyTorch version mismatch. Checkpoint: {checkpoint_pytorch_version}, "
                 f"Current: {torch.__version__}"

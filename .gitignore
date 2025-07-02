@@ -71,7 +71,6 @@ Thumbs.db
 logs/
 *.log
 data/
-models/
 artifacts/
 mlruns/
 .mlflow/
