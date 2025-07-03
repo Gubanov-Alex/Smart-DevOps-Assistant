@@ -320,16 +320,12 @@ class TestValueObjects:
 
     def test_source_system_identifiers(self):
         """Test SourceSystem identifier methods."""
-        prod_system = SourceSystem(
-            name="api-server", environment="production", version="1.2.3"
-        )
+        prod_system = SourceSystem(name="api-server", environment="production", version="1.2.3")
 
         assert prod_system.is_production()
         assert prod_system.full_identifier() == "api-server-production-1.2.3"
 
-        dev_system = SourceSystem(
-            name="web-app", environment="development", version="0.1.0"
-        )
+        dev_system = SourceSystem(name="web-app", environment="development", version="0.1.0")
 
         assert not dev_system.is_production()
         assert dev_system.full_identifier() == "web-app-development-0.1.0"

@@ -25,9 +25,7 @@ class ILogClassifier(Protocol):
         """Classify a single log message."""
         ...
 
-    async def get_confidence(
-        self, log_message: str, predicted_level: LogLevel
-    ) -> float:
+    async def get_confidence(self, log_message: str, predicted_level: LogLevel) -> float:
         """Get a confidence score for prediction."""
         ...
 
@@ -66,9 +64,7 @@ class IAnomalyDetector(Protocol):
 class IModelRegistry(Protocol):
     """Interface for ML model registry."""
 
-    async def save_model(
-        self, model: Any, name: str, version: str, metadata: Dict[str, Any]
-    ) -> UUID:
+    async def save_model(self, model: Any, name: str, version: str, metadata: Dict[str, Any]) -> UUID:
         """Save a trained model to registry.
 
         Args:

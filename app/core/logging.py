@@ -52,9 +52,7 @@ def setup_logging(
         )
     else:
         # JSON output for production
-        shared_processors.extend(
-            [structlog.processors.format_exc_info, structlog.processors.JSONRenderer()]
-        )
+        shared_processors.extend([structlog.processors.format_exc_info, structlog.processors.JSONRenderer()])
 
     # Configure structlog
     structlog.configure(

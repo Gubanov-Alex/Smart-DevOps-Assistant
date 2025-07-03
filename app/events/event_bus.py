@@ -20,15 +20,11 @@ class EventBus:
 
     def __init__(self) -> None:
         """Initialize the event bus."""
-        self._handlers: Dict[Type[DomainEvent], List[Callable[[DomainEvent], Any]]] = (
-            defaultdict(list)
-        )
+        self._handlers: Dict[Type[DomainEvent], List[Callable[[DomainEvent], Any]]] = defaultdict(list)
         self._middleware: List[Callable[[DomainEvent], DomainEvent]] = []
         self._dead_letter_queue: List[DomainEvent] = []
 
-    def subscribe(
-        self, event_type: Type[DomainEvent], handler: Callable[[DomainEvent], Any]
-    ) -> None:
+    def subscribe(self, event_type: Type[DomainEvent], handler: Callable[[DomainEvent], Any]) -> None:
         """Subscribe handler to an event type."""
         self._handlers[event_type].append(handler)
         logger.info(
@@ -51,25 +47,19 @@ class EventBus:
             # Apply middleware
             processed_event = event
             for middleware in self._middleware:
-                processed_event = await self._apply_middleware(
-                    middleware, processed_event
-                )
+                processed_event = await self._apply_middleware(middleware, processed_event)
 
             # Get handlers for this event type
             handlers = self._handlers.get(type(processed_event), [])
 
             if not handlers:
-                logger.debug(
-                    "No handlers found", event_type=type(processed_event).__name__
-                )
+                logger.debug("No handlers found", event_type=type(processed_event).__name__)
                 return
 
             # Execute handlers concurrently
             tasks = []
             for handler in handlers:
-                task = asyncio.create_task(
-                    self._execute_handler(handler, processed_event)
-                )
+                task = asyncio.create_task(self._execute_handler(handler, processed_event))
                 tasks.append(task)
 
             # Wait for all handlers to complete
@@ -100,9 +90,7 @@ class EventBus:
             )
             self._dead_letter_queue.append(event)
 
-    async def _apply_middleware(
-        self, middleware: Callable, event: DomainEvent
-    ) -> DomainEvent:
+    async def _apply_middleware(self, middleware: Callable, event: DomainEvent) -> DomainEvent:
         """Apply middleware to event."""
         try:
             if asyncio.iscoroutinefunction(middleware):

@@ -48,12 +48,9 @@ class LogTextProcessor:
         self.END_TOKEN = "<END>"
 
         # Regex patterns for log parsing (compiled for performance)
-        self.timestamp_pattern = re.compile(
-            r"\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?"
-        )
+        self.timestamp_pattern = re.compile(r"\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?")
         self.ip_pattern = re.compile(
-            r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
-            r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+            r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}" r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
         )
         self.uuid_pattern = re.compile(
             r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
@@ -64,9 +61,7 @@ class LogTextProcessor:
             r"https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?",
             re.IGNORECASE,
         )
-        self.email_pattern = re.compile(
-            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-        )
+        self.email_pattern = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
 
     def clean_log_message(self, message: str) -> str:
         """Clean and normalize a log message with enhanced security."""
@@ -210,9 +205,7 @@ class LogTextProcessor:
             raise ValueError("Cannot build vocabulary from empty message list")
 
         if len(messages) > 1_000_000:
-            logger.warning(
-                f"Large dataset ({len(messages)} messages), processing in batches"
-            )
+            logger.warning(f"Large dataset ({len(messages)} messages), processing in batches")
 
         # Count word frequencies
         word_counts = Counter()
@@ -232,9 +225,7 @@ class LogTextProcessor:
                 logger.warning(f"Failed to process message: {e}")
                 continue
 
-        logger.info(
-            f"Found {len(word_counts)} unique tokens from {processed_count} messages"
-        )
+        logger.info(f"Found {len(word_counts)} unique tokens from {processed_count} messages")
 
         # Build vocabulary with special tokens
         vocab = [self.PAD_TOKEN, self.UNK_TOKEN, self.START_TOKEN, self.END_TOKEN]
@@ -281,10 +272,7 @@ class LogTextProcessor:
         tokens = self.tokenize(message)
 
         # Convert to indices
-        indices = [
-            self.word_to_idx.get(token, self.word_to_idx[self.UNK_TOKEN])
-            for token in tokens
-        ]
+        indices = [self.word_to_idx.get(token, self.word_to_idx[self.UNK_TOKEN]) for token in tokens]
 
         actual_length = len(indices)
 
@@ -335,17 +323,11 @@ class LogTextProcessor:
 
         indices_list = indices.tolist()
         tokens = [
-            self.idx_to_word.get(idx, self.UNK_TOKEN)
-            for idx in indices_list
-            if idx != self.word_to_idx[self.PAD_TOKEN]
+            self.idx_to_word.get(idx, self.UNK_TOKEN) for idx in indices_list if idx != self.word_to_idx[self.PAD_TOKEN]
         ]
 
         # Remove special tokens
-        tokens = [
-            token
-            for token in tokens
-            if token not in {self.START_TOKEN, self.END_TOKEN, self.PAD_TOKEN}
-        ]
+        tokens = [token for token in tokens if token not in {self.START_TOKEN, self.END_TOKEN, self.PAD_TOKEN}]
 
         return " ".join(tokens)
 
@@ -361,9 +343,7 @@ class LogTextProcessor:
 
         vocab_data = {
             "word_to_idx": self.word_to_idx,
-            "idx_to_word": {
-                str(k): v for k, v in self.idx_to_word.items()
-            },  # JSON keys must be strings
+            "idx_to_word": {str(k): v for k, v in self.idx_to_word.items()},  # JSON keys must be strings
             "vocab_size": self.vocab_size,
             "max_sequence_length": self.max_sequence_length,
             "max_vocab_size": self.max_vocab_size,
@@ -401,9 +381,7 @@ class LogTextProcessor:
         # Проверка размера файла
         max_file_size = 100 * 1024 * 1024  # 100MB
         if path.stat().st_size > max_file_size:
-            raise VocabularySecurityError(
-                f"Vocabulary file too large: {path.stat().st_size} bytes"
-            )
+            raise VocabularySecurityError(f"Vocabulary file too large: {path.stat().st_size} bytes")
 
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -424,9 +402,7 @@ class LogTextProcessor:
         }
         if not all(key in vocab_data for key in required_keys):
             missing = required_keys - set(vocab_data.keys())
-            raise VocabularySecurityError(
-                f"Invalid vocabulary format. Missing: {missing}"
-            )
+            raise VocabularySecurityError(f"Invalid vocabulary format. Missing: {missing}")
 
         # Валидация данных
         if not isinstance(vocab_data["word_to_idx"], dict):
@@ -436,9 +412,7 @@ class LogTextProcessor:
         expected_size = len(vocab_data["word_to_idx"])
         stored_size = vocab_data["vocab_size"]
         if abs(expected_size - stored_size) > 10:  # Допускаем небольшое расхождение
-            raise VocabularySecurityError(
-                f"Vocabulary size mismatch: expected ~{expected_size}, got {stored_size}"
-            )
+            raise VocabularySecurityError(f"Vocabulary size mismatch: expected ~{expected_size}, got {stored_size}")
 
         # Загрузка данных
         self.word_to_idx = vocab_data["word_to_idx"]

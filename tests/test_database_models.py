@@ -105,9 +105,7 @@ class TestLogEntryModel:
 
         # Test timestamp + level index
         result = await db_session.execute(
-            select(LogEntry)
-            .where(LogEntry.level == LogLevel.ERROR)
-            .order_by(LogEntry.timestamp.desc())
+            select(LogEntry).where(LogEntry.level == LogLevel.ERROR).order_by(LogEntry.timestamp.desc())
         )
         error_logs = result.scalars().all()
 
@@ -115,9 +113,7 @@ class TestLogEntryModel:
 
         # Test source + timestamp index
         result = await db_session.execute(
-            select(LogEntry)
-            .where(LogEntry.source == "service-1")
-            .order_by(LogEntry.timestamp.desc())
+            select(LogEntry).where(LogEntry.source == "service-1").order_by(LogEntry.timestamp.desc())
         )
         service_logs = result.scalars().all()
 
@@ -387,9 +383,7 @@ class TestDatabaseQueries:
 
         # Test aggregation by source and level
         result = await db_session.execute(
-            select(
-                LogEntry.source, LogEntry.level, func.count(LogEntry.id).label("count")
-            )
+            select(LogEntry.source, LogEntry.level, func.count(LogEntry.id).label("count"))
             .group_by(LogEntry.source, LogEntry.level)
             .order_by(LogEntry.source, LogEntry.level)
         )
@@ -401,11 +395,7 @@ class TestDatabaseQueries:
 
         # Check specific counts
         service_a_info = next(
-            (
-                row
-                for row in aggregation
-                if row.source == "service-a" and row.level == LogLevel.INFO
-            ),
+            (row for row in aggregation if row.source == "service-a" and row.level == LogLevel.INFO),
             None,
         )
         assert service_a_info is not None
@@ -447,11 +437,7 @@ class TestDatabaseQueries:
         assert len(open_by_severity) == 2
 
         high_count = next(
-            (
-                row.count
-                for row in open_by_severity
-                if row.severity == IncidentSeverity.HIGH
-            ),
+            (row.count for row in open_by_severity if row.severity == IncidentSeverity.HIGH),
             0,
         )
         assert high_count == 1
@@ -481,9 +467,7 @@ class TestDatabaseQueries:
 
         # Query active deployed models
         result = await db_session.execute(
-            select(MLModel).where(
-                (MLModel.status == ModelStatus.DEPLOYED) & (MLModel.is_active.is_(True))
-            )
+            select(MLModel).where((MLModel.status == ModelStatus.DEPLOYED) & (MLModel.is_active.is_(True)))
         )
 
         active_models = result.scalars().all()
@@ -491,9 +475,7 @@ class TestDatabaseQueries:
 
         # Query latest version per model type
         result = await db_session.execute(
-            select(
-                MLModel.name, func.max(MLModel.version).label("latest_version")
-            ).group_by(MLModel.name)
+            select(MLModel.name, func.max(MLModel.version).label("latest_version")).group_by(MLModel.name)
         )
 
         latest_versions = result.all()

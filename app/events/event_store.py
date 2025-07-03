@@ -18,9 +18,7 @@ class IEventStore(Protocol):
         """Save events to the store."""
         ...
 
-    async def get_events(
-        self, aggregate_id: UUID, from_version: Optional[int] = None
-    ) -> List[DomainEvent]:
+    async def get_events(self, aggregate_id: UUID, from_version: Optional[int] = None) -> List[DomainEvent]:
         """Get events for an aggregate."""
         ...
 
@@ -43,9 +41,7 @@ class InMemoryEventStore:
             self._events[aggregate_id] = []
         self._events[aggregate_id].extend(events)
 
-    async def get_events(
-        self, aggregate_id: UUID, from_version: Optional[int] = None
-    ) -> List[DomainEvent]:
+    async def get_events(self, aggregate_id: UUID, from_version: Optional[int] = None) -> List[DomainEvent]:
         """Get events for aggregate."""
         events = self._events.get(aggregate_id, [])
         if from_version is not None:

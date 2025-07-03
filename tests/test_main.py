@@ -82,9 +82,7 @@ class TestMainApplication:
         # For proper CORS testing, we'd need a real browser or specialized tool
         # TestClient limitation: doesn't fully implement CORS preflight behavior
 
-    def test_cors_middleware_allows_development_origin(
-        self, client: TestClient
-    ) -> None:
+    def test_cors_middleware_allows_development_origin(self, client: TestClient) -> None:
         """Test CORS middleware allows requests from development origin."""
         # Test that requests with allowed origin work
         response = client.get(

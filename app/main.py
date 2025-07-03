@@ -61,9 +61,7 @@ def create_app() -> FastAPI:
 
     # Security middleware
     if settings.is_production:
-        app.add_middleware(
-            TrustedHostMiddleware, allowed_hosts=["*.yourdomain.com", "localhost"]
-        )
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*.yourdomain.com", "localhost"])
 
     # CORS middleware
     app.add_middleware(
@@ -76,9 +74,7 @@ def create_app() -> FastAPI:
 
     # Global exception handler
     @app.exception_handler(BaseAppException)
-    async def app_exception_handler(
-        request: Request, exc: BaseAppException
-    ) -> JSONResponse:
+    async def app_exception_handler(request: Request, exc: BaseAppException) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content={

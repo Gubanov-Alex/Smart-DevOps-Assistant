@@ -19,9 +19,7 @@ class TestAutoEncoderAnomalyDetector:
 
     def test_model_with_custom_parameters(self):
         """Test model with custom parameters."""
-        model = AutoEncoderAnomalyDetector(
-            input_dim=20, encoding_dim=16, hidden_dims=[64, 32, 16], dropout=0.3
-        )
+        model = AutoEncoderAnomalyDetector(input_dim=20, encoding_dim=16, hidden_dims=[64, 32, 16], dropout=0.3)
         assert model.input_dim == 20
         assert model.encoding_dim == 16
         assert model.hidden_dims == [64, 32, 16]
@@ -88,9 +86,7 @@ class TestAutoEncoderAnomalyDetector:
 
     def test_get_model_info(self):
         """Test model info retrieval."""
-        model = AutoEncoderAnomalyDetector(
-            input_dim=15, encoding_dim=8, hidden_dims=[32, 16], dropout=0.25
-        )
+        model = AutoEncoderAnomalyDetector(input_dim=15, encoding_dim=8, hidden_dims=[32, 16], dropout=0.25)
 
         info = model.get_model_info()
 
@@ -324,9 +320,5 @@ class TestModelIntegration:
         classifier_params = classifier.get_parameter_count()
 
         # Check that parameter counts are reasonable (not excessively large)
-        assert (
-            anomaly_params < 1_000_000
-        ), f"Anomaly detector too large: {anomaly_params} params"
-        assert (
-            classifier_params < 5_000_000
-        ), f"Classifier too large: {classifier_params} params"
+        assert anomaly_params < 1_000_000, f"Anomaly detector too large: {anomaly_params} params"
+        assert classifier_params < 5_000_000, f"Classifier too large: {classifier_params} params"

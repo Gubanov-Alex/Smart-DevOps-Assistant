@@ -226,9 +226,7 @@ class TestMLService:
     async def test_error_handling_in_analysis(self, ml_service):
         """Test error handling during analysis."""
         # Make the anomaly detector raise an exception
-        ml_service.anomaly_detector.detect_anomalies.side_effect = Exception(
-            "Model error"
-        )
+        ml_service.anomaly_detector.detect_anomalies.side_effect = Exception("Model error")
 
         with pytest.raises(Exception):
             await ml_service.detect_anomalies(["test message"])
@@ -291,9 +289,7 @@ class TestMLService:
     def test_memory_management(self, ml_service):
         """Test memory management during processing."""
         # Test that tensors are properly cleaned up
-        initial_memory = (
-            torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
-        )
+        initial_memory = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
 
         # Process some data
         with torch.no_grad():

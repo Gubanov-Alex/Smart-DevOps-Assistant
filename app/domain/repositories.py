@@ -53,9 +53,7 @@ class IMLModelRepository(Protocol):
         """Save a model."""
         ...
 
-    async def find_by_name_and_version(
-        self, name: str, version: str
-    ) -> Optional[MLModel]:
+    async def find_by_name_and_version(self, name: str, version: str) -> Optional[MLModel]:
         """Find model by name and version."""
         ...
 

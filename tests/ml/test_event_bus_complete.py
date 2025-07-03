@@ -427,9 +427,7 @@ class TestEventBus:
             source="test",
         )
 
-        anomaly_event = AnomalyDetected(
-            log_id="456", anomaly_score=0.8, threshold=0.5, detected_at=datetime.now()
-        )
+        anomaly_event = AnomalyDetected(log_id="456", anomaly_score=0.8, threshold=0.5, detected_at=datetime.now())
 
         await bus.publish(log_event)
         await bus.publish(anomaly_event)
@@ -504,9 +502,7 @@ class TestEventBusIntegration:
         logging_middleware = LoggingMiddleware()
         metrics_middleware = MetricsMiddleware()
 
-        bus = EventBus(
-            middleware=[audit_middleware, logging_middleware, metrics_middleware]
-        )
+        bus = EventBus(middleware=[audit_middleware, logging_middleware, metrics_middleware])
 
         events_processed = []
 

@@ -36,9 +36,7 @@ class TestRepositoryPatterns:
     def test_dataclass_ordering_fix(self):
         """Test that dataclass field ordering is correct."""
 
-        mock_entry = MockLogEntry(
-            message="Test message", level=LogLevel.INFO, source="test"
-        )
+        mock_entry = MockLogEntry(message="Test message", level=LogLevel.INFO, source="test")
 
         assert mock_entry.message == "Test message"
         assert mock_entry.level == LogLevel.INFO

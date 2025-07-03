@@ -90,24 +90,16 @@ class MLService:
                     {
                         "message": entry.message,
                         "level": entry.level.value,
-                        "confidence": await self._classifier.get_confidence(
-                            entry.message, entry.level
-                        ),
+                        "confidence": await self._classifier.get_confidence(entry.message, entry.level),
                         "log_id": str(entry.id),
                     }
                     for entry in log_entries
                 ],
                 "summary": {
                     "total_logs": len(logs),
-                    "error_count": sum(
-                        1 for entry in log_entries if entry.level.is_error_level()
-                    ),
-                    "critical_count": sum(
-                        1 for entry in log_entries if entry.level == LogLevel.CRITICAL
-                    ),
-                    "warning_count": sum(
-                        1 for entry in log_entries if entry.level == LogLevel.WARNING
-                    ),
+                    "error_count": sum(1 for entry in log_entries if entry.level.is_error_level()),
+                    "critical_count": sum(1 for entry in log_entries if entry.level == LogLevel.CRITICAL),
+                    "warning_count": sum(1 for entry in log_entries if entry.level == LogLevel.WARNING),
                 },
             }
 
@@ -142,17 +134,13 @@ class MLService:
             # Step 3: Incident Analysis (if requested)
             if include_incident_analysis:
                 logger.info("Running incident pattern analysis")
-                incident_analysis = (
-                    await self._incident_analyzer.analyze_incident_pattern(log_entries)
-                )
+                incident_analysis = await self._incident_analyzer.analyze_incident_pattern(log_entries)
                 results["incident_analysis"] = incident_analysis
 
             # Step 4: Update statistics
             processing_time = time.time() - start_time
             self._stats["total_classifications"] += len(logs)
-            self._stats["average_processing_time"] = (
-                self._stats["average_processing_time"] + processing_time
-            ) / 2
+            self._stats["average_processing_time"] = (self._stats["average_processing_time"] + processing_time) / 2
 
             results["processing_time_ms"] = processing_time * 1000
             results["timestamp"] = datetime.now(timezone.utc).isoformat()
@@ -163,9 +151,7 @@ class MLService:
                     aggregate_id=entry.id,
                     log_id=entry.id,
                     predicted_level=entry.level,
-                    confidence=await self._classifier.get_confidence(
-                        entry.message, entry.level
-                    ),
+                    confidence=await self._classifier.get_confidence(entry.message, entry.level),
                     model_version="v1.0.0",
                     processing_time_ms=int((processing_time / len(logs)) * 1000),
                 )
@@ -228,9 +214,7 @@ class MLService:
             return result
 
         except Exception as e:
-            logger.error(
-                "Single log analysis failed", error=str(e), message=log_message
-            )
+            logger.error("Single log analysis failed", error=str(e), message=log_message)
             raise
 
     async def get_service_stats(self) -> Dict[str, Any]:
@@ -244,21 +228,9 @@ class MLService:
         return {
             "statistics": self._stats.copy(),
             "health": {
-                "classifier": (
-                    health_checks[0]
-                    if not isinstance(health_checks[0], Exception)
-                    else False
-                ),
-                "detector": (
-                    health_checks[1]
-                    if not isinstance(health_checks[1], Exception)
-                    else False
-                ),
-                "overall": all(
-                    check is True
-                    for check in health_checks
-                    if not isinstance(check, Exception)
-                ),
+                "classifier": (health_checks[0] if not isinstance(health_checks[0], Exception) else False),
+                "detector": (health_checks[1] if not isinstance(health_checks[1], Exception) else False),
+                "overall": all(check is True for check in health_checks if not isinstance(check, Exception)),
             },
             "cache_info": {
                 "cached_models": len(self._model_cache),
@@ -266,9 +238,7 @@ class MLService:
             },
         }
 
-    async def retrain_model(
-        self, model_name: str, training_data: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    async def retrain_model(self, model_name: str, training_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Trigger model retraining.
 

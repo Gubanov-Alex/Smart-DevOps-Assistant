@@ -26,14 +26,10 @@ class TestAnomalyScore:
 
     def test_invalid_value_raises_error(self):
         """Тест что неверное значение вызывает ошибку."""
-        with pytest.raises(
-            ValueError, match="Anomaly score must be between 0.0 and 1.0"
-        ):
+        with pytest.raises(ValueError, match="Anomaly score must be between 0.0 and 1.0"):
             AnomalyScore(value=1.5, confidence=0.8)
 
-        with pytest.raises(
-            ValueError, match="Anomaly score must be between 0.0 and 1.0"
-        ):
+        with pytest.raises(ValueError, match="Anomaly score must be between 0.0 and 1.0"):
             AnomalyScore(value=-0.1, confidence=0.8)
 
     def test_invalid_confidence_raises_error(self):
@@ -95,9 +91,7 @@ class TestMetricValue:
     def test_valid_metric_creation(self):
         """Тест создания валидной метрики."""
         timestamp = datetime.now()
-        metric = MetricValue(
-            name="cpu_usage", value=75.5, unit="%", timestamp=timestamp
-        )
+        metric = MetricValue(name="cpu_usage", value=75.5, unit="%", timestamp=timestamp)
 
         assert metric.name == "cpu_usage"
         assert metric.value == 75.5
@@ -169,9 +163,7 @@ class TestSourceSystem:
 
     def test_valid_source_system_creation(self):
         """Тест создания валидной системы-источника."""
-        source = SourceSystem(
-            name="auth-service", environment="production", service_type="api"
-        )
+        source = SourceSystem(name="auth-service", environment="production", service_type="api")
 
         assert source.name == "auth-service"
         assert source.environment == "production"
@@ -189,32 +181,24 @@ class TestSourceSystem:
 
     def test_is_production_true(self):
         """Тест определения продакшн среды - положительный случай."""
-        source = SourceSystem(
-            name="api-service", environment="production", service_type="api"
-        )
+        source = SourceSystem(name="api-service", environment="production", service_type="api")
         assert source.is_production()
 
     def test_is_production_false(self):
         """Тест определения продакшн среды - отрицательный случай."""
-        source = SourceSystem(
-            name="api-service", environment="staging", service_type="api"
-        )
+        source = SourceSystem(name="api-service", environment="staging", service_type="api")
         assert not source.is_production()
 
     def test_full_identifier(self):
         """Тест генерации полного идентификатора."""
-        source = SourceSystem(
-            name="auth-service", environment="production", service_type="api"
-        )
+        source = SourceSystem(name="auth-service", environment="production", service_type="api")
 
         expected = "production.api.auth-service"
         assert source.full_identifier() == expected
 
     def test_source_system_immutability(self):
         """Тест неизменяемости объекта."""
-        source = SourceSystem(
-            name="test", environment="development", service_type="api"
-        )
+        source = SourceSystem(name="test", environment="development", service_type="api")
 
         with pytest.raises(AttributeError):
             source.name = "modified"

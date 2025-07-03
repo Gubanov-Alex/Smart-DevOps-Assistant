@@ -105,12 +105,8 @@ class LogEntry(Base):
     )
 
     # Core log data
-    message: Mapped[str] = mapped_column(
-        Text, nullable=False, comment="Raw log message content"
-    )
-    level: Mapped[LogLevel] = mapped_column(
-        String(20), nullable=False, index=True, comment="Log severity level"
-    )
+    message: Mapped[str] = mapped_column(Text, nullable=False, comment="Raw log message content")
+    level: Mapped[LogLevel] = mapped_column(String(20), nullable=False, index=True, comment="Log severity level")
     source: Mapped[str] = mapped_column(
         String(255), nullable=False, index=True, comment="Source system or service name"
     )
@@ -144,9 +140,7 @@ class LogEntry(Base):
     classification_confidence: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True, comment="ML classification confidence score"
     )
-    anomaly_score: Mapped[Optional[float]] = mapped_column(
-        Float, nullable=True, comment="Anomaly detection score"
-    )
+    anomaly_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Anomaly detection score")
 
     # Relationships
     incidents: Mapped[List["Incident"]] = relationship(
@@ -194,12 +188,8 @@ class Incident(Base):
     )
 
     # Core incident data
-    title: Mapped[str] = mapped_column(
-        String(500), nullable=False, comment="Incident title/summary"
-    )
-    description: Mapped[str] = mapped_column(
-        Text, nullable=False, comment="Detailed incident description"
-    )
+    title: Mapped[str] = mapped_column(String(500), nullable=False, comment="Incident title/summary")
+    description: Mapped[str] = mapped_column(Text, nullable=False, comment="Detailed incident description")
     severity: Mapped[IncidentSeverity] = mapped_column(
         String(20), nullable=False, index=True, comment="Incident severity level"
     )
@@ -283,9 +273,7 @@ class Incident(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<Incident(id={self.id}, severity={self.severity}, status={self.status})>"
-        )
+        return f"<Incident(id={self.id}, severity={self.severity}, status={self.status})>"
 
 
 class MLModel(Base):
@@ -306,12 +294,8 @@ class MLModel(Base):
     )
 
     # Model identification
-    name: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True, comment="Model name/identifier"
-    )
-    version: Mapped[str] = mapped_column(
-        String(50), nullable=False, comment="Model version string"
-    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True, comment="Model name/identifier")
+    version: Mapped[str] = mapped_column(String(50), nullable=False, comment="Model version string")
     model_type: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
@@ -350,18 +334,10 @@ class MLModel(Base):
     )
 
     # Performance metrics
-    accuracy: Mapped[Optional[float]] = mapped_column(
-        Float, nullable=True, comment="Model accuracy score"
-    )
-    precision: Mapped[Optional[float]] = mapped_column(
-        Float, nullable=True, comment="Model precision score"
-    )
-    recall: Mapped[Optional[float]] = mapped_column(
-        Float, nullable=True, comment="Model recall score"
-    )
-    f1_score: Mapped[Optional[float]] = mapped_column(
-        Float, nullable=True, comment="Model F1 score"
-    )
+    accuracy: Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Model accuracy score")
+    precision: Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Model precision score")
+    recall: Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Model recall score")
+    f1_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Model F1 score")
 
     # Training information
     training_dataset_size: Mapped[Optional[int]] = mapped_column(
@@ -372,9 +348,7 @@ class MLModel(Base):
     )
 
     # Model artifacts and configuration
-    model_path: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True, comment="Path to model file/artifact"
-    )
+    model_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="Path to model file/artifact")
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSON, nullable=True, comment="Model configuration parameters"
     )
@@ -401,29 +375,21 @@ class MLModel(Base):
         Index("idx_model_created_at", "created_at"),
         Index("idx_model_is_active", "is_active"),
         CheckConstraint("accuracy >= 0 AND accuracy <= 1", name="check_accuracy_range"),
-        CheckConstraint(
-            "precision >= 0 AND precision <= 1", name="check_precision_range"
-        ),
+        CheckConstraint("precision >= 0 AND precision <= 1", name="check_precision_range"),
         CheckConstraint("recall >= 0 AND recall <= 1", name="check_recall_range"),
         CheckConstraint("f1_score >= 0 AND f1_score <= 1", name="check_f1_score_range"),
         {"comment": "ML model registry with performance tracking"},
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<MLModel(name={self.name}, version={self.version}, status={self.status})>"
-        )
+        return f"<MLModel(name={self.name}, version={self.version}, status={self.status})>"
 
 
 incident_logs = Table(
     "incident_logs",
     Base.metadata,
-    Column(
-        "incident_id", UUID(as_uuid=True), ForeignKey("incidents.id"), primary_key=True
-    ),
-    Column(
-        "log_id", UUID(as_uuid=True), ForeignKey("log_entries.id"), primary_key=True
-    ),
+    Column("incident_id", UUID(as_uuid=True), ForeignKey("incidents.id"), primary_key=True),
+    Column("log_id", UUID(as_uuid=True), ForeignKey("log_entries.id"), primary_key=True),
     Column(
         "created_at",
         DateTime(timezone=True),
