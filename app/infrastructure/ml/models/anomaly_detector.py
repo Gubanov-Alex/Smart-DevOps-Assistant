@@ -36,7 +36,9 @@ class AutoEncoderAnomalyDetector(BaseMLModel):
         prev_dim = input_dim
 
         for hidden_dim in self.hidden_dims:
-            encoder_layers.extend([nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.Dropout(dropout)])
+            encoder_layers.extend(
+                [nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.Dropout(dropout)]
+            )
             prev_dim = hidden_dim
 
         encoder_layers.append(nn.Linear(prev_dim, encoding_dim))
@@ -47,7 +49,9 @@ class AutoEncoderAnomalyDetector(BaseMLModel):
         prev_dim = encoding_dim
 
         for hidden_dim in reversed(self.hidden_dims):
-            decoder_layers.extend([nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.Dropout(dropout)])
+            decoder_layers.extend(
+                [nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.Dropout(dropout)]
+            )
             prev_dim = hidden_dim
 
         decoder_layers.append(nn.Linear(prev_dim, input_dim))
@@ -96,7 +100,10 @@ class AutoEncoderAnomalyDetector(BaseMLModel):
 
             # Calculate a threshold if not set
             if self.anomaly_threshold.item() == 0.0:
-                threshold = reconstruction_errors.mean() + threshold_std_multiplier * reconstruction_errors.std()
+                threshold = (
+                    reconstruction_errors.mean()
+                    + threshold_std_multiplier * reconstruction_errors.std()
+                )
             else:
                 threshold = self.anomaly_threshold
 
@@ -104,7 +111,9 @@ class AutoEncoderAnomalyDetector(BaseMLModel):
             max_error = reconstruction_errors.max()
             min_error = reconstruction_errors.min()
             if max_error > min_error:
-                anomaly_scores = (reconstruction_errors - min_error) / (max_error - min_error)
+                anomaly_scores = (reconstruction_errors - min_error) / (
+                    max_error - min_error
+                )
             else:
                 anomaly_scores = torch.zeros_like(reconstruction_errors)
 
@@ -112,7 +121,9 @@ class AutoEncoderAnomalyDetector(BaseMLModel):
 
         return anomaly_scores, is_anomaly
 
-    def update_threshold(self, normal_data: torch.Tensor, std_multiplier: float = 2.0) -> None:
+    def update_threshold(
+        self, normal_data: torch.Tensor, std_multiplier: float = 2.0
+    ) -> None:
         """Update an anomaly threshold based on normal data statistics."""
         self.eval()
         with torch.no_grad():
@@ -121,7 +132,9 @@ class AutoEncoderAnomalyDetector(BaseMLModel):
             std_error = errors.std()
 
             self.anomaly_threshold.copy_(mean_error + std_multiplier * std_error)
-            self.reconstruction_stats.copy_(torch.tensor([mean_error.item(), std_error.item()]))
+            self.reconstruction_stats.copy_(
+                torch.tensor([mean_error.item(), std_error.item()])
+            )
 
     def get_model_info(self) -> Dict[str, Any]:
         """Get detailed model information."""

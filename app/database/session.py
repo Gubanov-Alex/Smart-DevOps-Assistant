@@ -274,7 +274,9 @@ async def database_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 # Utility functions for common database operations
-async def execute_with_retry(session: AsyncSession, query, max_retries: int = 3, retry_delay: float = 1.0):
+async def execute_with_retry(
+    session: AsyncSession, query, max_retries: int = 3, retry_delay: float = 1.0
+):
     """Execute query with automatic retry on transient failures.
 
     Args:

@@ -1,6 +1,7 @@
 """Simple main test that should work."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 
@@ -10,20 +11,20 @@ class TestMainSimple:
     def test_settings_import(self):
         """Test that Settings can be imported and has required fields."""
         from app.core.config import Settings, get_settings
-        
+
         # Test Settings class exists
         assert Settings is not None
-        
+
         # Test get_settings function works
         settings = get_settings()
         assert settings is not None
-        
-        # Test required fields exist
-        assert hasattr(settings, 'log_format')
-        assert hasattr(settings, 'database_url')
 
-    @patch('app.main.setup_logging')
-    @patch('app.main.get_settings')
+        # Test required fields exist
+        assert hasattr(settings, "log_format")
+        assert hasattr(settings, "database_url")
+
+    @patch("app.main.setup_logging")
+    @patch("app.main.get_settings")
     def test_create_app_with_mocks(self, mock_get_settings, mock_setup_logging):
         """Test create_app with mocked dependencies."""
         # Mock settings to have all required fields
@@ -36,12 +37,13 @@ class TestMainSimple:
         mock_settings.api_version = "0.1.0"
         mock_settings.api_description = "Test Description"
         mock_settings.debug = True
-        
+
         mock_get_settings.return_value = mock_settings
-        
+
         # Import and test create_app
         try:
             from app.main import create_app
+
             app = create_app()
             assert app is not None
             assert app.title == "Test API"

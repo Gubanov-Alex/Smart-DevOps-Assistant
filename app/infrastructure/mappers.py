@@ -79,7 +79,9 @@ class IncidentMapper:
             resolved_at=model.resolved_at,
             assigned_to=model.assigned_to,
             tags=model.tags or [],
-            related_logs=([log.id for log in model.related_logs] if model.related_logs else []),
+            related_logs=(
+                [log.id for log in model.related_logs] if model.related_logs else []
+            ),
             metadata=model.extra_data or {},  # Map extra_data to metadata
         )
 

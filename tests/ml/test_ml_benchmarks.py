@@ -52,7 +52,9 @@ class TestLogProcessingBenchmarks:
     """Benchmark tests for log processing."""
 
     @pytest.mark.benchmark
-    def test_log_parsing_benchmark(self, benchmark: Any, sample_log_data: Dict[str, Any]) -> None:
+    def test_log_parsing_benchmark(
+        self, benchmark: Any, sample_log_data: Dict[str, Any]
+    ) -> None:
         """Benchmark log parsing performance."""
 
         def parse_logs() -> List[Dict[str, Any]]:

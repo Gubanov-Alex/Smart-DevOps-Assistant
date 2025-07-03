@@ -30,7 +30,9 @@ class TestLogEvents:
             tags=["test", "error"],
         )
 
-        assert event.aggregate_id == log_id  # Should match since __post_init__ sets it to log_id
+        assert (
+            event.aggregate_id == log_id
+        )  # Should match since __post_init__ sets it to log_id
         assert event.log_id == log_id
         assert event.message == "Test log message"
         assert event.level == LogLevel.ERROR
@@ -51,7 +53,9 @@ class TestLogEvents:
             processing_time_ms=150,
         )
 
-        assert event.aggregate_id == log_id  # Should match since __post_init__ sets it to log_id
+        assert (
+            event.aggregate_id == log_id
+        )  # Should match since __post_init__ sets it to log_id
         assert event.log_id == log_id
         assert event.predicted_level == LogLevel.WARNING
         assert event.confidence == 0.95
@@ -74,7 +78,9 @@ class TestLogEvents:
             severity="high",
         )
 
-        assert event.aggregate_id == first_log_id  # Should match since __post_init__ uses first affected log
+        assert (
+            event.aggregate_id == first_log_id
+        )  # Should match since __post_init__ uses first affected log
         assert event.source == "api-service"
         assert event.anomaly_score == anomaly_score
         assert event.affected_logs == log_ids
@@ -97,7 +103,9 @@ class TestLogEvents:
             sample_log_ids=sample_logs,
         )
 
-        assert event.aggregate_id == first_log_id  # Should match since __post_init__ uses first sample log
+        assert (
+            event.aggregate_id == first_log_id
+        )  # Should match since __post_init__ uses first sample log
         assert event.pattern_id == "conn_timeout_pattern"
         assert event.pattern_description == "Connection timeout errors"
         assert event.frequency_per_hour == 25

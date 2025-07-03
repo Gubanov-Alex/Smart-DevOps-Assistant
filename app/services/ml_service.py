@@ -15,8 +15,8 @@ from app.core.interfaces import (
     IModelRegistry,
 )
 from app.domain.entities import LogEntry, LogLevel
-from app.events.log_events import AnomalyDetected, LogClassificationCompleted
 from app.events.event_bus import EventBus
+from app.events.log_events import AnomalyDetected, LogClassificationCompleted
 
 logger = structlog.get_logger()
 
@@ -24,7 +24,7 @@ logger = structlog.get_logger()
 class MLService:
     """
     Main ML service orchestrator.
-    
+
     Service layer orchestration with dependency injection.
     """
 
@@ -53,7 +53,7 @@ class MLService:
     def batch_size(self) -> int:
         """Default batch size for processing."""
         return 32
-    
+
     @property
     def max_sequence_length(self) -> int:
         """Maximum sequence length for text processing."""
@@ -67,17 +67,17 @@ class MLService:
     ) -> Dict[str, Any]:
         """
         Comprehensive batch log analysis.
-        
+
         Args:
             logs: List of log messages to analyze
             include_anomaly_detection: Whether to run anomaly detection
             include_incident_analysis: Whether to run incident analysis
-        
+
         Returns:
             Dictionary with analysis results
         """
         start_time = time.time()
-        
+
         try:
             # Convert strings to LogEntry objects
             log_entries = []
@@ -104,7 +104,7 @@ class MLService:
 
             # Step 1: Log Classification
             logger.info("Running log classification", count=len(log_entries))
-            
+
             # Mock classification results for testing
             for entry in log_entries:
                 classification_result = {
@@ -116,9 +116,15 @@ class MLService:
 
             # Update summary counts
             results["summary"] = {
-                "info_count": sum(1 for entry in log_entries if entry.level == LogLevel.INFO),
-                "warning_count": sum(1 for entry in log_entries if entry.level == LogLevel.WARNING), 
-                "error_count": sum(1 for entry in log_entries if entry.level == LogLevel.ERROR),
+                "info_count": sum(
+                    1 for entry in log_entries if entry.level == LogLevel.INFO
+                ),
+                "warning_count": sum(
+                    1 for entry in log_entries if entry.level == LogLevel.WARNING
+                ),
+                "error_count": sum(
+                    1 for entry in log_entries if entry.level == LogLevel.ERROR
+                ),
             }
 
             # Step 2: Anomaly Detection (if requested)

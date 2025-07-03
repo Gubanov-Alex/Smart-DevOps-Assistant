@@ -1,6 +1,7 @@
 """Database configuration and settings."""
 
 from functools import lru_cache
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -60,7 +61,9 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # Environment
-    environment: str = Field(default="development", description="Application environment")
+    environment: str = Field(
+        default="development", description="Application environment"
+    )
 
     # App configuration
     app_name: str = "Smart DevOps Assistant"
@@ -71,7 +74,9 @@ class Settings(BaseSettings):
     # API settings
     api_title: str = Field(default="Smart DevOps Assistant", description="API title")
     api_version: str = Field(default="0.1.0", description="API version")
-    api_description: str = Field(default="AI-powered DevOps monitoring", description="API description")
+    api_description: str = Field(
+        default="AI-powered DevOps monitoring", description="API description"
+    )
 
     # Database settings
     database_url: str = Field(
@@ -84,7 +89,9 @@ class Settings(BaseSettings):
     )
 
     # Redis settings for caching and events
-    redis_url: str = Field(default="redis://localhost:6380/0", description="Redis connection URL")
+    redis_url: str = Field(
+        default="redis://localhost:6380/0", description="Redis connection URL"
+    )
 
     # Security settings
     secret_key: str = Field(
@@ -101,14 +108,24 @@ class Settings(BaseSettings):
 
     # Database pool settings
     pool_size: int = Field(default=10, description="Database connection pool size")
-    max_overflow: int = Field(default=20, description="Max connections beyond pool size")
-    pool_timeout: int = Field(default=30, description="Pool checkout timeout in seconds")
-    pool_recycle: int = Field(default=3600, description="Connection recycle time in seconds")
-    pool_pre_ping: bool = Field(default=True, description="Validate connections before use")
+    max_overflow: int = Field(
+        default=20, description="Max connections beyond pool size"
+    )
+    pool_timeout: int = Field(
+        default=30, description="Pool checkout timeout in seconds"
+    )
+    pool_recycle: int = Field(
+        default=3600, description="Connection recycle time in seconds"
+    )
+    pool_pre_ping: bool = Field(
+        default=True, description="Validate connections before use"
+    )
 
     # Query settings
     query_timeout: int = Field(default=30, description="Query timeout in seconds")
-    statement_timeout: str = Field(default="30s", description="PostgreSQL statement timeout")
+    statement_timeout: str = Field(
+        default="30s", description="PostgreSQL statement timeout"
+    )
 
     # Development settings
     echo_sql: bool = Field(default=False, description="Log all SQL statements")

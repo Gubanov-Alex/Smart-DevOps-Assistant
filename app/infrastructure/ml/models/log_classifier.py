@@ -97,7 +97,9 @@ class LogClassifierNN(BaseMLModel):
         # LSTM
         if lengths is not None:
             # Pack padded sequences for efficiency
-            packed = nn.utils.rnn.pack_padded_sequence(embedded, lengths.cpu(), batch_first=True, enforce_sorted=False)
+            packed = nn.utils.rnn.pack_padded_sequence(
+                embedded, lengths.cpu(), batch_first=True, enforce_sorted=False
+            )
             lstm_out, (hidden, cell) = self.lstm(packed)
             lstm_out, _ = nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
         else:
@@ -114,7 +116,9 @@ class LogClassifierNN(BaseMLModel):
 
         return logits
 
-    def predict_proba(self, x: torch.Tensor, lengths: torch.Tensor = None) -> torch.Tensor:
+    def predict_proba(
+        self, x: torch.Tensor, lengths: torch.Tensor = None
+    ) -> torch.Tensor:
         """Get class probabilities."""
         self.eval()
         with torch.no_grad():
@@ -122,7 +126,9 @@ class LogClassifierNN(BaseMLModel):
             probabilities = F.softmax(logits, dim=1)
         return probabilities
 
-    def predict(self, x: torch.Tensor, lengths: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
+    def predict(
+        self, x: torch.Tensor, lengths: torch.Tensor = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get predictions and confidence scores."""
         probabilities = self.predict_proba(x, lengths)
         predictions = torch.argmax(probabilities, dim=1)

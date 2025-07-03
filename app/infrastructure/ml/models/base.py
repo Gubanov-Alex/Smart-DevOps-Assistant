@@ -63,7 +63,8 @@ class BaseMLModel(nn.Module, abc.ABC):
         # Проверка расширения файла
         if path.suffix not in self.ALLOWED_EXTENSIONS:
             raise ModelSecurityError(
-                f"Unsupported file extension: {path.suffix}. " f"Allowed: {self.ALLOWED_EXTENSIONS}"
+                f"Unsupported file extension: {path.suffix}. "
+                f"Allowed: {self.ALLOWED_EXTENSIONS}"
             )
 
         # Проверка существования файла
@@ -74,7 +75,8 @@ class BaseMLModel(nn.Module, abc.ABC):
         file_size = path.stat().st_size
         if file_size > self.MAX_FILE_SIZE:
             raise ModelSecurityError(
-                f"Model file too large: {file_size} bytes. " f"Maximum allowed: {self.MAX_FILE_SIZE} bytes"
+                f"Model file too large: {file_size} bytes. "
+                f"Maximum allowed: {self.MAX_FILE_SIZE} bytes"
             )
 
         # Проверка что это обычный файл (не symlink или device)
@@ -94,7 +96,9 @@ class BaseMLModel(nn.Module, abc.ABC):
         except Exception as e:
             raise ModelSecurityError(f"Failed to calculate file hash: {e}")
 
-    def save_checkpoint(self, path: Union[str, Path], metadata: Optional[Dict[str, Any]] = None) -> None:
+    def save_checkpoint(
+        self, path: Union[str, Path], metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Save model checkpoint with metadata and integrity check."""
         path = Path(path)
 
@@ -123,7 +127,10 @@ class BaseMLModel(nn.Module, abc.ABC):
             torch.save(checkpoint, temp_path)
             temp_path.replace(path)  # Атомарная операция
 
-            logger.info(f"Model checkpoint saved successfully: {path} " f"(hash: {self._model_hash[:8]}...)")
+            logger.info(
+                f"Model checkpoint saved successfully: {path} "
+                f"(hash: {self._model_hash[:8]}...)"
+            )
         except Exception as e:
             if temp_path.exists():
                 temp_path.unlink()  # Очистка временного файла
@@ -151,7 +158,10 @@ class BaseMLModel(nn.Module, abc.ABC):
         # Вычисление и проверка хеша файла
         file_hash = self._calculate_file_hash(path)
         if expected_hash and file_hash != expected_hash:
-            raise ModelSecurityError(f"File integrity check failed. Expected: {expected_hash}, " f"got: {file_hash}")
+            raise ModelSecurityError(
+                f"File integrity check failed. Expected: {expected_hash}, "
+                f"got: {file_hash}"
+            )
 
         try:
             # Безопасная загрузка только весов модели с PyTorch 2.7+ compatibility
@@ -169,13 +179,19 @@ class BaseMLModel(nn.Module, abc.ABC):
         required_keys = {"model_state_dict", "model_name", "version"}
         if not all(key in checkpoint for key in required_keys):
             missing_keys = required_keys - set(checkpoint.keys())
-            raise ModelSecurityError(f"Invalid checkpoint format. Missing keys: {missing_keys}")
+            raise ModelSecurityError(
+                f"Invalid checkpoint format. Missing keys: {missing_keys}"
+            )
 
         # Проверка совместимости версий PyTorch
         checkpoint_pytorch_version = checkpoint.get("pytorch_version")
-        if checkpoint_pytorch_version and checkpoint_pytorch_version != torch.__version__:
+        if (
+            checkpoint_pytorch_version
+            and checkpoint_pytorch_version != torch.__version__
+        ):
             logger.warning(
-                f"PyTorch version mismatch. Checkpoint: {checkpoint_pytorch_version}, " f"Current: {torch.__version__}"
+                f"PyTorch version mismatch. Checkpoint: {checkpoint_pytorch_version}, "
+                f"Current: {torch.__version__}"
             )
 
         # Проверка хеша модели если доступен
@@ -197,7 +213,10 @@ class BaseMLModel(nn.Module, abc.ABC):
             self.training_history = checkpoint.get("training_history", [])
             self._model_hash = stored_hash
 
-            logger.info(f"Model checkpoint loaded successfully: {path} " f"(parameters: {self.get_parameter_count()})")
+            logger.info(
+                f"Model checkpoint loaded successfully: {path} "
+                f"(parameters: {self.get_parameter_count()})"
+            )
 
             return checkpoint.get("metadata", {})
 
