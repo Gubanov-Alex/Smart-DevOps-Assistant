@@ -18,9 +18,10 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import get_settings
+from app.models import Base
 
 settings = get_settings()
-from app.models import Base
+
 
 logger = structlog.get_logger()
 

@@ -1,12 +1,11 @@
 """Production-ready LogRepository implementation with batch operations and optimization."""
 
-import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import structlog
-from sqlalchemy import and_, desc, func, or_, select, text
+from sqlalchemy import and_, desc, func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 

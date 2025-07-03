@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Protocol
 from uuid import UUID
 
-from app.domain.entities import Incident, IncidentSeverity, LogEntry, LogLevel, MLModel
+from app.domain.entities import LogEntry, LogLevel
 
 
 class ILogRepository(Protocol):
