@@ -6,8 +6,9 @@ from datetime import datetime
 import pytest
 
 from app.events.base import DomainEvent
-from app.events.event_bus import EventBus
+from app.events.event_bus import EventBus, EventSubscription
 from app.events.log_events import AnomalyDetected, LogEntryCreated
+from app.events.middleware import AuditMiddleware, LoggingMiddleware, MetricsMiddleware
 
 
 class TestEvent(DomainEvent):

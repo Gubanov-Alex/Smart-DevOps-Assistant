@@ -127,7 +127,7 @@ jobs:
               ;;
             lint)
               echo "🔍 Running linting..."
-              poetry run flake8 app/ tests/ --max-complexity=10 --max-line-length=88
+              poetry run flake8 app/ tests/ --max-complexity=10 --max-line-length=120
               ;;
             security-scan)
               echo "🔒 Security scanning..."

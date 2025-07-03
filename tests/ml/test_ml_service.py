@@ -338,8 +338,8 @@ class TestMLServiceEdgeCases:
         service.text_processor = MagicMock()
 
         service.text_processor.encode_batch.return_value = (
-                torch.randint(0, 100, (4, 20)),
-                torch.tensor([15, 12, 18, 10]),
+            torch.randint(0, 100, (4, 20)),
+            torch.tensor([15, 12, 18, 10]),
         )
 
         #
