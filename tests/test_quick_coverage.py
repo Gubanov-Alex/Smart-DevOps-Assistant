@@ -1,6 +1,6 @@
 """Fixed quick coverage tests."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
