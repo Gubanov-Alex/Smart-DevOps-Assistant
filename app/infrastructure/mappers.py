@@ -30,10 +30,24 @@ class LogEntryMapper:
     @staticmethod
     def to_entity(model: LogEntryModel) -> LogEntryEntity:
         """Convert SQLAlchemy model to domain entity."""
+        # Handle case-insensitive enum conversion
+        level_value = model.level.upper() if model.level else "INFO"
+
+        # Map database values to enum values
+        level_mapping = {
+            "DEBUG": LogLevel.DEBUG,
+            "INFO": LogLevel.INFO,
+            "WARNING": LogLevel.WARNING,
+            "ERROR": LogLevel.ERROR,
+            "CRITICAL": LogLevel.CRITICAL,
+        }
+
+        level = level_mapping.get(level_value, LogLevel.INFO)
+
         return LogEntryEntity(
             id=model.id,
             message=model.message,
-            level=LogLevel(model.level),
+            level=level,
             source=model.source,
             timestamp=model.timestamp,
             metadata=model.extra_data or {},  # Map extra_data to metadata
@@ -45,7 +59,7 @@ class LogEntryMapper:
         return LogEntryModel(
             id=entity.id,
             message=entity.message,
-            level=entity.level,
+            level=entity.level.value.upper(),  # Store as uppercase in DB
             source=entity.source,
             timestamp=entity.timestamp,
             extra_data=entity.metadata,  # Map metadata to extra_data
@@ -55,7 +69,7 @@ class LogEntryMapper:
     def update_model_from_entity(model: LogEntryModel, entity: LogEntryEntity) -> None:
         """Update SQLAlchemy model from domain entity."""
         model.message = entity.message
-        model.level = entity.level
+        model.level = entity.level.value.upper()  # Store as uppercase in DB
         model.source = entity.source
         model.timestamp = entity.timestamp
         model.extra_data = entity.metadata
@@ -92,8 +106,8 @@ class IncidentMapper:
             id=entity.id,
             title=entity.title,
             description=entity.description,
-            severity=entity.severity,
-            status=entity.status,
+            severity=entity.severity.value,  # Convert enum to string
+            status=entity.status.value,  # Convert enum to string
             source=entity.source,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
@@ -108,8 +122,8 @@ class IncidentMapper:
         """Update SQLAlchemy model from domain entity."""
         model.title = entity.title
         model.description = entity.description
-        model.severity = entity.severity
-        model.status = entity.status
+        model.severity = entity.severity.value
+        model.status = entity.status.value
         model.source = entity.source
         model.updated_at = entity.updated_at
         model.resolved_at = entity.resolved_at
@@ -142,7 +156,7 @@ class MLModelMapper:
             training_duration_minutes=model.training_duration_minutes,
             model_path=model.model_path,
             config=model.config or {},
-            metadata=model.extra_data or {},  # Map extra_data to metadata
+            metadata=model.extra_data or {},
             is_active=model.is_active,
             deployment_config=model.deployment_config or {},
         )
@@ -155,7 +169,7 @@ class MLModelMapper:
             name=entity.name,
             version=entity.version,
             model_type=entity.model_type,
-            status=entity.status,
+            status=entity.status.value,  # Convert enum to string
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             trained_at=entity.trained_at,
@@ -168,7 +182,7 @@ class MLModelMapper:
             training_duration_minutes=entity.training_duration_minutes,
             model_path=entity.model_path,
             config=entity.config,
-            extra_data=entity.metadata,  # Map metadata to extra_data
+            extra_data=entity.metadata,
             is_active=entity.is_active,
             deployment_config=entity.deployment_config,
         )
@@ -179,7 +193,7 @@ class MLModelMapper:
         model.name = entity.name
         model.version = entity.version
         model.model_type = entity.model_type
-        model.status = entity.status
+        model.status = entity.status.value
         model.updated_at = entity.updated_at
         model.trained_at = entity.trained_at
         model.deployed_at = entity.deployed_at
@@ -194,48 +208,3 @@ class MLModelMapper:
         model.extra_data = entity.metadata
         model.is_active = entity.is_active
         model.deployment_config = entity.deployment_config
-
-
-# Convenience functions for batch operations
-def log_entities_to_models(entities: List[LogEntryEntity]) -> List[LogEntryModel]:
-    """Convert list of LogEntry entities to models."""
-    return [LogEntryMapper.to_model(entity) for entity in entities]
-
-
-def log_models_to_entities(models: List[LogEntryModel]) -> List[LogEntryEntity]:
-    """Convert list of LogEntry models to entities."""
-    return [LogEntryMapper.to_entity(model) for model in models]
-
-
-def incident_entities_to_models(entities: List[IncidentEntity]) -> List[IncidentModel]:
-    """Convert list of Incident entities to models."""
-    return [IncidentMapper.to_model(entity) for entity in entities]
-
-
-def incident_models_to_entities(models: List[IncidentModel]) -> List[IncidentEntity]:
-    """Convert list of Incident models to entities."""
-    return [IncidentMapper.to_entity(model) for model in models]
-
-
-def mlmodel_entities_to_models(entities: List[MLModelEntity]) -> List[MLModelModel]:
-    """Convert list of MLModel entities to models."""
-    return [MLModelMapper.to_model(entity) for entity in entities]
-
-
-def mlmodel_models_to_entities(models: List[MLModelModel]) -> List[MLModelEntity]:
-    """Convert list of MLModel models to entities."""
-    return [MLModelMapper.to_entity(model) for model in models]
-
-
-# Export mapper classes and utility functions
-__all__ = [
-    "LogEntryMapper",
-    "IncidentMapper",
-    "MLModelMapper",
-    "log_entities_to_models",
-    "log_models_to_entities",
-    "incident_entities_to_models",
-    "incident_models_to_entities",
-    "mlmodel_entities_to_models",
-    "mlmodel_models_to_entities",
-]

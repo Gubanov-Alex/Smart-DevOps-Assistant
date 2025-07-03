@@ -16,9 +16,10 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import QueuePool
 
-from app.core.config import settings
+from app.core.config import get_settings
+
+settings = get_settings()
 from app.models import Base
 
 logger = structlog.get_logger()
@@ -56,7 +57,7 @@ class DatabaseManager:
         self._engine = create_async_engine(
             settings.database.database_url,
             # Connection pool configuration
-            poolclass=QueuePool,
+            # poolclass=QueuePool,  # Not needed for async
             pool_size=settings.database.pool_size,
             max_overflow=settings.database.max_overflow,
             pool_timeout=settings.database.pool_timeout,
