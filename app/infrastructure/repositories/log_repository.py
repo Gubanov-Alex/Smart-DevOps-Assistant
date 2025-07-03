@@ -301,7 +301,7 @@ class LogRepository:
 
             delete_stmt = text(
                 """
-                DELETE FROM log_entries 
+                DELETE FROM log_entries
                 WHERE timestamp < :cutoff_time
             """
             )
