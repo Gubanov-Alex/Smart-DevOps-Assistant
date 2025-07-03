@@ -33,7 +33,7 @@ endif
 # Database configuration
 DB_URL := postgresql://devops_user:devops_pass@localhost:5433/devops_assistant
 DB_URL_ASYNC := postgresql+asyncpg://devops_user:devops_pass@localhost:5433/devops_assistant
-REDIS_URL := redis://localhost:6380/0
+REDIS_URL_VAR := redis://localhost:6380/0
 
 # Default target
 .DEFAULT_GOAL := help
@@ -99,7 +99,7 @@ setup-dirs: ## Create all necessary project directories
 create-env: ## Create optimized .env file with all required settings
 	@echo "$(BLUE)📝 Creating .env configuration...$(NC)"
 	@test -f .env && echo "$(YELLOW).env already exists, creating .env.example$(NC)" || true
-	@cat > .env.example << 'EOF'
+	@cat > .env.example <<'EOF'
 # Smart DevOps Assistant Environment Configuration
 # ================================================
 
@@ -109,11 +109,11 @@ LOG_LEVEL=INFO
 ENVIRONMENT=development
 
 # Database Configuration
-DATABASE_URL=$(DB_URL_ASYNC)
-DATABASE_URL_SYNC=$(DB_URL)
+DATABASE_URL=postgresql+asyncpg://devops_user:devops_pass@localhost:5433/devops_assistant
+DATABASE_URL_SYNC=postgresql://devops_user:devops_pass@localhost:5433/devops_assistant
 
 # Redis Configuration
-REDIS_URL=$(REDIS_URL)
+REDIS_URL=redis://localhost:6380/0
 CELERY_BROKER_URL=redis://localhost:6380/1
 CELERY_RESULT_BACKEND=redis://localhost:6380/1
 
@@ -139,7 +139,7 @@ ML_CACHE_SIZE=100
 # Monitoring
 ENABLE_METRICS=true
 PROMETHEUS_PORT=9090
-EOF
+EOF:
 	@test -f .env || cp .env.example .env
 	@echo "$(GREEN)✅ Environment configuration ready$(NC)"
 
@@ -165,7 +165,7 @@ db-services-up: ## Start database services (PostgreSQL + Redis)
 	@echo "$(GREEN)✅ Database services ready$(NC)"
 	@echo "$(BLUE)Connections available:$(NC)"
 	@echo "  PostgreSQL: $(DB_URL)"
-	@echo "  Redis: $(REDIS_URL)"
+	@echo "  Redis: $(REDIS_URL_VAR)"
 
 db-services-down: ## Stop database services
 	@echo "$(BLUE)🛑 Stopping database services...$(NC)"
@@ -180,7 +180,7 @@ db-services-status: ## Check database services status
 	@echo ""
 	@echo "$(BLUE)🔍 Testing connections:$(NC)"
 	@psql $(DB_URL) -c "SELECT version();" 2>/dev/null && echo "$(GREEN)✅ PostgreSQL: Connected$(NC)" || echo "$(RED)❌ PostgreSQL: Failed$(NC)"
-	@redis-cli -u $(REDIS_URL) ping 2>/dev/null && echo "$(GREEN)✅ Redis: Connected$(NC)" || echo "$(RED)❌ Redis: Failed$(NC)"
+	@redis-cli -u $(REDIS_URL_VAR) ping 2>/dev/null && echo "$(GREEN)✅ Redis: Connected$(NC)" || echo "$(RED)❌ Redis: Failed$(NC)"
 
 db-init-alembic: ## Initialize Alembic migrations (run once)
 	@echo "$(BLUE)🔧 Initializing Alembic...$(NC)"
@@ -195,7 +195,7 @@ db-create-migration: db-services-up ## Create new database migration
 
 db-migrate: db-services-up ## Apply pending database migrations
 	@echo "$(BLUE)⬆️ Applying database migrations...$(NC)"
-	@sleep 5  # Ensure DB is ready
+	@sleep 5
 	@export DATABASE_URL_SYNC="$(DB_URL)" && \
 		poetry run alembic upgrade head
 	@echo "$(GREEN)✅ Database migrations applied$(NC)"
@@ -259,7 +259,7 @@ db-restore: ## Restore database from backup (BACKUP_FILE=path/to/backup.sql)
 dev: db-services-up ## Start development server with hot reload
 	@echo "$(BLUE)🚀 Starting development server...$(NC)"
 	@export DATABASE_URL="$(DB_URL_ASYNC)" && \
-		export REDIS_URL="$(REDIS_URL)" && \
+		export REDIS_URL="$(REDIS_URL_VAR)" && \
 		poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 dev-full: ## Start complete development environment
@@ -276,7 +276,7 @@ dev-full: ## Start complete development environment
 dev-api-only: create-env ## Start only API server (assumes DB running)
 	@echo "$(BLUE)⚡ Starting API server only...$(NC)"
 	@export DATABASE_URL="$(DB_URL_ASYNC)" && \
-		export REDIS_URL="$(REDIS_URL)" && \
+		export REDIS_URL="$(REDIS_URL_VAR)" && \
 		poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 # =============================================================================
@@ -327,7 +327,7 @@ test-fast: ## Run tests without coverage for quick feedback
 test-integration: db-services-up ## Run integration tests with real database
 	@echo "$(BLUE)🔗 Running integration tests...$(NC)"
 	@export DATABASE_URL="$(DB_URL_ASYNC)" && \
-		export REDIS_URL="$(REDIS_URL)" && \
+		export REDIS_URL="$(REDIS_URL_VAR)" && \
 		poetry run pytest tests/integration/ -v --tb=short
 	@echo "$(GREEN)✅ Integration tests completed$(NC)"
 
@@ -457,7 +457,7 @@ check-deps: ## Check for dependency updates
 update-deps: ## Update dependencies safely
 	@echo "$(BLUE)⬆️ Updating dependencies...$(NC)"
 	@poetry update
-	@$(MAKE) security > /dev/null  # Re-run security after updates
+	@$(MAKE) security > /dev/null
 	@echo "$(GREEN)✅ Dependencies updated$(NC)"
 
 docs: setup-dirs ## Generate documentation
