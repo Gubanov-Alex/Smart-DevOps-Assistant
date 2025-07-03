@@ -1,8 +1,5 @@
 """Database configuration and settings."""
 
-import os
-from typing import Any, Optional
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -132,5 +129,9 @@ class Settings(BaseSettings):
         object.__setattr__(self, "database", DatabaseCompatibility(self))
 
 
-# Global settings instance
-settings = Settings()
+from functools import lru_cache
+
+@lru_cache()
+def get_settings() -> Settings:
+    """Get application settings with caching."""
+    return Settings()

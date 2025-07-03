@@ -4,7 +4,6 @@ Tests cover model creation, relationships, constraints, and database operations
 with both unit and integration testing approaches.
 """
 
-import uuid
 from datetime import datetime, timedelta
 from typing import AsyncGenerator
 
@@ -13,9 +12,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.session import database_session, db_manager
+from app.database.session import db_manager
 from app.models import (
-    Base,
     Incident,
     IncidentSeverity,
     IncidentStatus,
@@ -484,7 +482,7 @@ class TestDatabaseQueries:
         # Query active deployed models
         result = await db_session.execute(
             select(MLModel).where(
-                (MLModel.status == ModelStatus.DEPLOYED) & (MLModel.is_active == True)
+                (MLModel.status == ModelStatus.DEPLOYED) & (MLModel.is_active.is_(True))
             )
         )
 

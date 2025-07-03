@@ -188,7 +188,7 @@ class TestMLService:
         assert "anomaly_detector" in info
         assert "classifier" in info
         assert "models_loaded" in info
-        assert info["models_loaded"] == True
+        assert info["models_loaded"] is True
 
     @pytest.mark.asyncio
     async def test_update_anomaly_threshold(self, ml_service):
@@ -337,16 +337,9 @@ class TestMLServiceEdgeCases:
         service.models_loaded = True
         service.text_processor = MagicMock()
 
-        special_messages = [
-            "Message with émojis 🚀🔥",
-            "Unicode test: ñáéíóú",
-            "Special chars: @#$%^&*()",
-            "Mixed: 中文测试",
-        ]
-
         service.text_processor.encode_batch.return_value = (
-            torch.randint(0, 100, (4, 20)),
-            torch.tensor([15, 12, 18, 10]),
+                torch.randint(0, 100, (4, 20)),
+                torch.tensor([15, 12, 18, 10]),
         )
 
         #

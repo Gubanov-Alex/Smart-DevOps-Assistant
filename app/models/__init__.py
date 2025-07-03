@@ -10,6 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+# Association table for many-to-many relationship between incidents and logs
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -413,9 +414,6 @@ class MLModel(Base):
             f"<MLModel(name={self.name}, version={self.version}, status={self.status})>"
         )
 
-
-# Association table for many-to-many relationship between incidents and logs
-from sqlalchemy import Column, Table
 
 incident_logs = Table(
     "incident_logs",

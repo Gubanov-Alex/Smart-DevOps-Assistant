@@ -4,8 +4,7 @@ This module provides bidirectional mapping between domain entities and
 database models, handling field name differences like metadata <-> extra_data.
 """
 
-from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from app.domain.entities import Incident as IncidentEntity
 from app.domain.entities import (
