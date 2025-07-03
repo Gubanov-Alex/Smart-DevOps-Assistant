@@ -1,7 +1,6 @@
 """Database configuration and settings."""
 
 from functools import lru_cache
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -60,10 +59,19 @@ class DatabaseCompatibility:
 class Settings(BaseSettings):
     """Application settings."""
 
+    # Environment
+    environment: str = Field(default="development", description="Application environment")
+
     # App configuration
     app_name: str = "Smart DevOps Assistant"
     debug: bool = Field(default=False, description="Debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
+    log_format: str = Field(default="json", description="Log format: json or console")
+
+    # API settings
+    api_title: str = Field(default="Smart DevOps Assistant", description="API title")
+    api_version: str = Field(default="0.1.0", description="API version")
+    api_description: str = Field(default="AI-powered DevOps monitoring", description="API description")
 
     # Database settings
     database_url: str = Field(
@@ -106,16 +114,24 @@ class Settings(BaseSettings):
     echo_sql: bool = Field(default=False, description="Log all SQL statements")
     echo_pool: bool = Field(default=False, description="Log connection pool events")
 
+    @property
+    def is_development(self) -> bool:
+        """Check if environment is development or testing."""
+        return self.environment.lower() in ["development", "testing", "dev", "test"]
+
+    @property
+    def is_production(self) -> bool:
+        """Check if environment is production."""
+        return self.environment.lower() in ["production", "prod"]
+
     class Config:
         env_file = ".env"
         case_sensitive = False
-        # Allow arbitrary attributes
         arbitrary_types_allowed = True
         extra = "allow"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Set database compatibility after initialization
         object.__setattr__(self, "database", DatabaseCompatibility(self))
 
 
