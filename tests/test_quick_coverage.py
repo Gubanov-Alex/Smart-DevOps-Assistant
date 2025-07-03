@@ -1,24 +1,11 @@
 """Fixed quick coverage tests."""
 
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.domain.entities import (
-    Incident,
-    IncidentSeverity,
-    IncidentStatus,
-    LogEntry,
-    LogLevel,
-)
-from app.domain.value_objects import AnomalyScore, MetricValue, SourceSystem
-from app.events.event_store import InMemoryEventStore
-
-# Заменяем несуществующий импорт на существующий
 from app.events.handlers import IncidentEventHandlers, LogEventHandlers, MLEventHandlers
-from app.events.middleware import AuditMiddleware, LoggingMiddleware, MetricsMiddleware
-from app.infrastructure.ml.preprocessing.text_processor import LogTextProcessor
+from app.events.middleware import AuditMiddleware
 
 
 class TestEventHandlers:

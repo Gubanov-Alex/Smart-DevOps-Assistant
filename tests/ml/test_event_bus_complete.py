@@ -1,8 +1,5 @@
 """Minimal working event bus test."""
 
-from unittest.mock import AsyncMock
-from uuid import uuid4
-
 import pytest
 
 from app.events.event_bus import EventBus

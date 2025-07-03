@@ -1,6 +1,5 @@
 """ML service orchestration layer - FIXED VERSION."""
 
-import asyncio
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List
@@ -16,7 +15,6 @@ from app.core.interfaces import (
 )
 from app.domain.entities import LogEntry, LogLevel
 from app.events.event_bus import EventBus
-from app.events.log_events import AnomalyDetected, LogClassificationCompleted
 
 logger = structlog.get_logger()
 
