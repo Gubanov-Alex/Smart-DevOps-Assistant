@@ -358,9 +358,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           ENVIRONMENT: testing
         run: |
-          # Создаем директорию если не существует
           mkdir -p tests/integration
-          # Если нет тестов, создаем пустой результат
           if [ ! -f "tests/integration/test_*.py" ]; then
             echo "ℹ️ No integration tests found, creating empty result"
             touch junit-integration.xml

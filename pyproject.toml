@@ -65,6 +65,8 @@ types-requests = "^2.31.0"
 psutil = {version = "^5.9.6", optional = true}
 pydocstyle = "^6.3.0"
 pytest-postgresql = "^7.0.2"
+faker = "^37.4.0"
+pytest-xdist = "^3.8.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"
@@ -117,7 +119,6 @@ addopts = [
     "--benchmark-group-by=func",
     "--benchmark-warmup=on",
     "--benchmark-disable-gc",
-    # Suppress specific warnings
     "-W", "ignore::pytest.PytestCollectionWarning",
 ]
 markers = [
@@ -125,6 +126,8 @@ markers = [
     "integration: marks tests as integration tests",
     "benchmark: marks tests as benchmark tests",
     "unit: marks tests as unit tests",
+    "repositories: marks tests as repository tests",
+    "asyncio: marks tests as async tests",
 ]
 filterwarnings = [
     "ignore:cannot collect test class.*__init__:pytest.PytestCollectionWarning",
@@ -165,8 +168,3 @@ exclude_lines = [
 directory = "htmlcov"
 
 [tool.coverage.xml]
-output = "coverage.xml"
-
-[tool.bandit]
-exclude_dirs = ["tests", "migrations"]
-skips = ["B101", "B601"]

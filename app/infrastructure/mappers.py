@@ -135,28 +135,27 @@ class MLModelMapper:
 
     @staticmethod
     def to_entity(model: MLModelModel) -> MLModelEntity:
-        """Convert SQLAlchemy model to domain entity."""
+        """Convert SQLAlchemy model to domain entity - matching actual domain structure."""
         return MLModelEntity(
-            id=model.id,
             name=model.name,
-            version=model.version,
             model_type=model.model_type,
+            version=model.version,
+            id=model.id,
             status=ModelStatus(model.status),
             created_at=model.created_at,
             updated_at=model.updated_at,
-            trained_at=model.trained_at,
             deployed_at=model.deployed_at,
             accuracy=model.accuracy,
-            precision=model.precision,
-            recall=model.recall,
-            f1_score=model.f1_score,
-            training_dataset_size=model.training_dataset_size,
             training_duration_minutes=model.training_duration_minutes,
             model_path=model.model_path,
             config=model.config or {},
+            metrics={
+                # Map SQLAlchemy fields to metrics dict
+                "precision": model.precision,
+                "recall": model.recall,
+                "f1_score": model.f1_score,
+            },
             metadata=model.extra_data or {},
-            is_active=model.is_active,
-            deployment_config=model.deployment_config or {},
         )
 
     @staticmethod
@@ -167,22 +166,22 @@ class MLModelMapper:
             name=entity.name,
             version=entity.version,
             model_type=entity.model_type,
-            status=entity.status.value,  # Convert enum to string
+            status=entity.status.value,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
-            trained_at=entity.trained_at,
+            trained_at=None,  # Not in domain entity
             deployed_at=entity.deployed_at,
             accuracy=entity.accuracy,
-            precision=entity.precision,
-            recall=entity.recall,
-            f1_score=entity.f1_score,
-            training_dataset_size=entity.training_dataset_size,
+            precision=entity.metrics.get("precision"),
+            recall=entity.metrics.get("recall"),
+            f1_score=entity.metrics.get("f1_score"),
+            training_dataset_size=None,  # Not in domain entity
             training_duration_minutes=entity.training_duration_minutes,
             model_path=entity.model_path,
             config=entity.config,
             extra_data=entity.metadata,
-            is_active=entity.is_active,
-            deployment_config=entity.deployment_config,
+            is_active=True,  # Default value
+            deployment_config={},  # Default value
         )
 
     @staticmethod
@@ -193,16 +192,12 @@ class MLModelMapper:
         model.model_type = entity.model_type
         model.status = entity.status.value
         model.updated_at = entity.updated_at
-        model.trained_at = entity.trained_at
         model.deployed_at = entity.deployed_at
         model.accuracy = entity.accuracy
-        model.precision = entity.precision
-        model.recall = entity.recall
-        model.f1_score = entity.f1_score
-        model.training_dataset_size = entity.training_dataset_size
+        model.precision = entity.metrics.get("precision")
+        model.recall = entity.metrics.get("recall")
+        model.f1_score = entity.metrics.get("f1_score")
         model.training_duration_minutes = entity.training_duration_minutes
         model.model_path = entity.model_path
         model.config = entity.config
         model.extra_data = entity.metadata
-        model.is_active = entity.is_active
-        model.deployment_config = entity.deployment_config

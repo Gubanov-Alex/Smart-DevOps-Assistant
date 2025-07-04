@@ -1,4 +1,4 @@
-"""SQLAlchemy models for Smart DevOps Assistant.
+"""SQLAlchemy models for Smart DevOps Assistant - Fixed deprecation warnings.
 
 This module contains all database models using SQLAlchemy ORM with full
 async support and proper typing. Models are designed to support high-throughput
@@ -27,12 +27,15 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-# Base class for all models
-Base = declarative_base()
+
+# Base class for all models - Fixed deprecation warning
+class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models."""
+
+    pass
 
 
 class LogLevel(str, Enum):
@@ -87,6 +90,21 @@ class ModelStatus(str, Enum):
         return self == self.DEPLOYED
 
 
+# Association table for many-to-many relationship between incidents and logs
+incident_logs = Table(
+    "incident_logs",
+    Base.metadata,
+    Column(
+        "incident_id", UUID(as_uuid=True), ForeignKey("incidents.id"), primary_key=True
+    ),
+    Column(
+        "log_id", UUID(as_uuid=True), ForeignKey("log_entries.id"), primary_key=True
+    ),
+    Index("idx_incident_logs_incident", "incident_id"),
+    Index("idx_incident_logs_log", "log_id"),
+)
+
+
 class LogEntry(Base):
     """Log entry model for storing and indexing application logs.
 
@@ -95,31 +113,44 @@ class LogEntry(Base):
     """
 
     __tablename__ = "log_entries"
-
-    # Primary key and identification
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        comment="Unique log entry identifier",
+    __table_args__ = (
+        # Indexes for high-performance queries
+        Index("idx_log_entries_timestamp", "timestamp"),
+        Index("idx_log_entries_level", "level"),
+        Index("idx_log_entries_source", "source"),
+        Index("idx_log_entries_level_timestamp", "level", "timestamp"),
+        Index("idx_log_entries_source_timestamp", "source", "timestamp"),
+        Index("idx_log_entries_anomaly_score", "anomaly_score"),
+        # Constraints for data integrity
+        CheckConstraint(
+            "anomaly_score >= 0 AND anomaly_score <= 1",
+            name="check_anomaly_score_range",
+        ),
+        CheckConstraint(
+            "classification_confidence >= 0 AND classification_confidence <= 1",
+            name="check_classification_confidence_range",
+        ),
+        {"comment": "Application log entries with ML analysis results"},
     )
 
-    # Core log data
+    # Primary fields
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     message: Mapped[str] = mapped_column(
         Text, nullable=False, comment="Raw log message content"
     )
-    level: Mapped[LogLevel] = mapped_column(
-        String(20), nullable=False, index=True, comment="Log severity level"
+    level: Mapped[str] = mapped_column(
+        String(20), nullable=False, comment="Log severity level"
     )
     source: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True, comment="Source system or service name"
+        String(255), nullable=False, comment="Source system or service name"
     )
 
-    # Timestamp information
+    # Timestamps
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        index=True,
         server_default=func.now(),
         comment="Log entry timestamp",
     )
@@ -130,17 +161,13 @@ class LogEntry(Base):
         comment="Record creation timestamp",
     )
 
-    # Structured extra_data (renamed to avoid SQLAlchemy reserved word)
+    # Optional analysis fields
     extra_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSON, nullable=True, comment="Additional structured log extra_data"
     )
-
-    # Performance tracking
     processing_time_ms: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True, comment="Log processing time in milliseconds"
     )
-
-    # ML analysis results
     classification_confidence: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True, comment="ML classification confidence score"
     )
@@ -150,79 +177,72 @@ class LogEntry(Base):
 
     # Relationships
     incidents: Mapped[List["Incident"]] = relationship(
-        "Incident",
-        secondary="incident_logs",
-        back_populates="related_logs",
-        lazy="selectin",
-    )
-
-    # Database constraints and indexes
-    __table_args__ = (
-        Index("idx_log_timestamp_level", "timestamp", "level"),
-        Index("idx_log_source_timestamp", "source", "timestamp"),
-        Index("idx_log_created_at", "created_at"),
-        CheckConstraint(
-            "classification_confidence >= 0 AND classification_confidence <= 1",
-            name="check_classification_confidence_range",
-        ),
-        CheckConstraint(
-            "anomaly_score >= 0 AND anomaly_score <= 1",
-            name="check_anomaly_score_range",
-        ),
-        {"comment": "Application log entries with ML analysis results"},
+        "Incident", secondary=incident_logs, back_populates="related_logs"
     )
 
     def __repr__(self) -> str:
+        """String representation of log entry."""
         return f"<LogEntry(id={self.id}, level={self.level}, source={self.source})>"
+
+    def is_critical(self) -> bool:
+        """Check if log entry is critical level."""
+        return self.level == LogLevel.CRITICAL.value
+
+    def has_anomaly(self, threshold: float = 0.7) -> bool:
+        """Check if log entry has anomaly above threshold."""
+        return self.anomaly_score is not None and self.anomaly_score >= threshold
 
 
 class Incident(Base):
-    """Incident tracking model for managing system issues.
+    """Incident model for tracking system issues and outages.
 
-    Supports full incident lifecycle management with proper
-    audit trail and relationship tracking.
+    Designed for efficient incident management with proper relationships
+    to related log entries and comprehensive metadata support.
     """
 
     __tablename__ = "incidents"
-
-    # Primary key and identification
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        comment="Unique incident identifier",
+    __table_args__ = (
+        # Indexes for efficient querying
+        Index("idx_incidents_status", "status"),
+        Index("idx_incidents_severity", "severity"),
+        Index("idx_incidents_source", "source"),
+        Index("idx_incidents_created_at", "created_at"),
+        Index("idx_incidents_assigned_to", "assigned_to"),
+        Index("idx_incidents_status_severity", "status", "severity"),
+        Index("idx_incidents_priority_score", "priority_score"),
+        # Constraints
+        CheckConstraint(
+            "priority_score >= 0 AND priority_score <= 1",
+            name="check_priority_score_range",
+        ),
+        {"comment": "System incidents and issues tracking"},
     )
 
-    # Core incident data
+    # Primary fields
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     title: Mapped[str] = mapped_column(
-        String(500), nullable=False, comment="Incident title/summary"
+        String(500), nullable=False, comment="Incident title or summary"
     )
     description: Mapped[str] = mapped_column(
         Text, nullable=False, comment="Detailed incident description"
     )
-    severity: Mapped[IncidentSeverity] = mapped_column(
-        String(20), nullable=False, index=True, comment="Incident severity level"
+    severity: Mapped[str] = mapped_column(
+        String(20), nullable=False, comment="Incident severity level"
     )
-    status: Mapped[IncidentStatus] = mapped_column(
-        String(20),
-        nullable=False,
-        default=IncidentStatus.OPEN,
-        index=True,
-        comment="Current incident status",
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, comment="Current incident status"
     )
     source: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        index=True,
-        comment="Source system where incident originated",
+        String(255), nullable=False, comment="Source system or detector"
     )
 
-    # Timestamp tracking
+    # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
-        index=True,
         comment="Incident creation timestamp",
     )
     updated_at: Mapped[datetime] = mapped_column(
@@ -236,99 +256,87 @@ class Incident(Base):
         DateTime(timezone=True), nullable=True, comment="Incident resolution timestamp"
     )
 
-    # Assignment and ownership
+    # Assignment and categorization
     assigned_to: Mapped[Optional[str]] = mapped_column(
-        String(255),
-        nullable=True,
-        index=True,
-        comment="Person or team assigned to incident",
+        String(255), nullable=True, comment="Assigned team or person"
     )
-
-    # Categorization and extra_data (renamed to avoid SQLAlchemy reserved word)
     tags: Mapped[Optional[List[str]]] = mapped_column(
-        ARRAY(String), nullable=True, comment="Incident categorization tags"
-    )
-    extra_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
-        JSON, nullable=True, comment="Additional incident extra_data"
+        ARRAY(String), nullable=True, comment="Incident tags for categorization"
     )
 
-    # Performance metrics
+    # Metadata and analytics
+    extra_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+        JSON, nullable=True, comment="Additional incident metadata"
+    )
     resolution_time_minutes: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True, comment="Time to resolution in minutes"
     )
-
-    # AI analysis results
     priority_score: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True, comment="AI-calculated priority score"
     )
 
     # Relationships
     related_logs: Mapped[List[LogEntry]] = relationship(
-        "LogEntry",
-        secondary="incident_logs",
-        back_populates="incidents",
-        lazy="selectin",
-    )
-
-    # Database constraints and indexes
-    __table_args__ = (
-        Index("idx_incident_status_severity", "status", "severity"),
-        Index("idx_incident_created_at", "created_at"),
-        Index("idx_incident_assigned_to", "assigned_to"),
-        CheckConstraint(
-            "priority_score >= 0 AND priority_score <= 1",
-            name="check_priority_score_range",
-        ),
-        {"comment": "System incidents with full lifecycle tracking"},
+        "LogEntry", secondary=incident_logs, back_populates="incidents"
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<Incident(id={self.id}, severity={self.severity}, status={self.status})>"
-        )
+        """String representation of incident."""
+        return f"<Incident(id={self.id}, title={self.title}, status={self.status})>"
+
+    def is_open(self) -> bool:
+        """Check if incident is in open status."""
+        return self.status in [
+            IncidentStatus.OPEN.value,
+            IncidentStatus.IN_PROGRESS.value,
+        ]
+
+    def is_critical(self) -> bool:
+        """Check if incident is critical severity."""
+        return self.severity == IncidentSeverity.CRITICAL.value
 
 
 class MLModel(Base):
-    """ML model registry for tracking trained models and their lifecycle.
+    """ML Model metadata and lifecycle tracking.
 
-    Supports model versioning, performance tracking, and deployment
-    status management for production ML systems.
+    Stores comprehensive information about machine learning models
+    including training metrics, deployment status, and versioning.
     """
 
     __tablename__ = "ml_models"
-
-    # Primary key and identification
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        comment="Unique model identifier",
+    __table_args__ = (
+        # Indexes for model management queries
+        Index("idx_ml_models_name", "name"),
+        Index("idx_ml_models_version", "version"),
+        Index("idx_ml_models_status", "status"),
+        Index("idx_ml_models_type", "model_type"),
+        Index("idx_ml_models_name_version", "name", "version"),
+        Index("idx_ml_models_active", "is_active"),
+        Index("idx_ml_models_deployed_at", "deployed_at"),
+        Index("idx_ml_models_accuracy", "accuracy"),
+        # Unique constraint for name-version combination
+        UniqueConstraint("name", "version", name="uq_ml_models_name_version"),
+        {"comment": "ML model metadata and lifecycle tracking"},
     )
 
-    # Model identification
+    # Primary fields
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     name: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True, comment="Model name/identifier"
+        String(255), nullable=False, comment="Model name identifier"
     )
     version: Mapped[str] = mapped_column(
         String(50), nullable=False, comment="Model version string"
     )
     model_type: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-        index=True,
-        comment="Type of ML model (classifier, detector, etc.)",
+        String(100), nullable=False, comment="Type of ML model"
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, comment="Current model status"
     )
 
-    # Model status and lifecycle
-    status: Mapped[ModelStatus] = mapped_column(
-        String(20),
-        nullable=False,
-        default=ModelStatus.TRAINING,
-        index=True,
-        comment="Current model status",
-    )
-
-    # Timestamp tracking
+    # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -363,7 +371,7 @@ class MLModel(Base):
         Float, nullable=True, comment="Model F1 score"
     )
 
-    # Training information
+    # Training metadata
     training_dataset_size: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True, comment="Size of training dataset"
     )
@@ -371,80 +379,42 @@ class MLModel(Base):
         Integer, nullable=True, comment="Training duration in minutes"
     )
 
-    # Model artifacts and configuration
+    # Model storage and configuration
     model_path: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True, comment="Path to model file/artifact"
+        String(500), nullable=True, comment="Path to model file"
     )
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSON, nullable=True, comment="Model configuration parameters"
     )
     extra_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
-        JSON, nullable=True, comment="Additional model extra_data"
+        JSON, nullable=True, comment="Additional model metadata"
     )
 
-    # Deployment information
+    # Status fields
     is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        default=False,
-        index=True,
-        comment="Whether model is currently active",
+        Boolean, nullable=False, default=True, comment="Whether model is active"
     )
     deployment_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSON, nullable=True, comment="Deployment configuration"
     )
 
-    # Database constraints and indexes
-    __table_args__ = (
-        UniqueConstraint("name", "version", name="uq_model_name_version"),
-        Index("idx_model_type_status", "model_type", "status"),
-        Index("idx_model_created_at", "created_at"),
-        Index("idx_model_is_active", "is_active"),
-        CheckConstraint("accuracy >= 0 AND accuracy <= 1", name="check_accuracy_range"),
-        CheckConstraint(
-            "precision >= 0 AND precision <= 1", name="check_precision_range"
-        ),
-        CheckConstraint("recall >= 0 AND recall <= 1", name="check_recall_range"),
-        CheckConstraint("f1_score >= 0 AND f1_score <= 1", name="check_f1_score_range"),
-        {"comment": "ML model registry with performance tracking"},
-    )
-
     def __repr__(self) -> str:
-        return (
-            f"<MLModel(name={self.name}, version={self.version}, status={self.status})>"
-        )
+        """String representation of ML model."""
+        return f"<MLModel(id={self.id}, name={self.name}, version={self.version}, status={self.status})>"
 
+    def is_deployed(self) -> bool:
+        """Check if model is deployed."""
+        return self.status == ModelStatus.DEPLOYED.value
 
-incident_logs = Table(
-    "incident_logs",
-    Base.metadata,
-    Column(
-        "incident_id", UUID(as_uuid=True), ForeignKey("incidents.id"), primary_key=True
-    ),
-    Column(
-        "log_id", UUID(as_uuid=True), ForeignKey("log_entries.id"), primary_key=True
-    ),
-    Column(
-        "created_at",
-        DateTime(timezone=True),
-        server_default=func.now(),
-        comment="Association creation timestamp",
-    ),
-    Index("idx_incident_logs_incident", "incident_id"),
-    Index("idx_incident_logs_log", "log_id"),
-    comment="Association between incidents and related log entries",
-)
+    def is_production_ready(self) -> bool:
+        """Check if model is ready for production."""
+        return self.status in [ModelStatus.READY.value, ModelStatus.DEPLOYED.value]
 
-
-# Export all models for easy importing
-__all__ = [
-    "Base",
-    "LogLevel",
-    "IncidentSeverity",
-    "IncidentStatus",
-    "ModelStatus",
-    "LogEntry",
-    "Incident",
-    "MLModel",
-    "incident_logs",
-]
+    def get_performance_summary(self) -> Dict[str, Optional[float]]:
+        """Get performance metrics summary."""
+        return {
+            "accuracy": self.accuracy,
+            "precision": self.precision,
+            "recall": self.recall,
+            "f1_score": self.f1_score,
+        }

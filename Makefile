@@ -38,7 +38,10 @@ REDIS_URL_VAR := redis://localhost:6380/0
 # Default target
 .DEFAULT_GOAL := help
 .PHONY: help install dev test lint format security build deploy clean
-
+.PHONY: test-repositories test-incident-repo test-mlmodel-repo test-unit-fast test-coverage
+.PHONY:test-performance test-watch test-debug test-failed test-report setup-repositories
+.PHONY:qa-repositories test-integration-repos benchmark-repositories ci-test-repositories
+.PHONY:repo-shell docs-repositories clean-test-artifacts help-repositories
 # =============================================================================
 # HELP & INFORMATION
 # =============================================================================
@@ -494,3 +497,128 @@ health-check: ## Comprehensive health check
 	@$(MAKE) test-fast > /dev/null && echo "$(GREEN)✅ Tests passing$(NC)" || echo "$(RED)❌ Tests failing$(NC)"
 	@$(MAKE) format-check > /dev/null && echo "$(GREEN)✅ Code formatting OK$(NC)" || echo "$(YELLOW)⚠️ Formatting issues$(NC)"
 	@echo "$(GREEN)🎯 Health check complete$(NC)"
+
+# Test targets
+test-repositories: ## Run all repository tests
+	@echo "$(BLUE)🧪 Running repository tests...$(NC)"
+	@poetry run pytest tests/unit/ -k "repository" -v --cov=app/infrastructure/repositories --cov-report=html
+	@echo "$(GREEN)✅ Repository tests completed$(NC)"
+
+test-incident-repo: ## Run incident repository tests
+	@echo "$(BLUE)🧪 Running incident repository tests...$(NC)"
+	@poetry run pytest tests/unit/test_incident_repository.py -v
+	@echo "$(GREEN)✅ Incident repository tests completed$(NC)"
+
+test-mlmodel-repo: ## Run ML model repository tests
+	@echo "$(BLUE)🧪 Running ML model repository tests...$(NC)"
+	@poetry run pytest tests/unit/test_mlmodel_repository.py -v
+	@echo "$(GREEN)✅ ML model repository tests completed$(NC)"
+
+test-unit-fast: ## Run unit tests in parallel
+	@echo "$(BLUE)🧪 Running unit tests in parallel...$(NC)"
+	@poetry run pytest tests/unit/ -n auto --dist=loadscope
+	@echo "$(GREEN)✅ Unit tests completed$(NC)"
+
+test-coverage: ## Run tests with coverage report
+	@echo "$(BLUE)📊 Running tests with coverage...$(NC)"
+	@poetry run pytest tests/unit/ --cov=app --cov-report=html --cov-report=term-missing
+	@echo "$(GREEN)✅ Coverage report generated$(NC)"
+	@echo "$(BLUE)📋 Open htmlcov/index.html to view detailed coverage$(NC)"
+
+test-performance: ## Run performance tests
+	@echo "$(BLUE)⚡ Running performance tests...$(NC)"
+	@poetry run pytest tests/unit/ -m "performance" -v
+	@echo "$(GREEN)✅ Performance tests completed$(NC)"
+
+test-watch: ## Run tests in watch mode
+	@echo "$(BLUE)👀 Starting test watch mode...$(NC)"
+	@poetry run pytest-watch tests/unit/ --runner "pytest -v"
+
+test-debug: ## Run tests with debug output
+	@echo "$(BLUE)🔍 Running tests with debug output...$(NC)"
+	@poetry run pytest tests/unit/ -v -s --log-level=DEBUG
+
+test-failed: ## Run only failed tests from previous run
+	@echo "$(BLUE)🔄 Running only failed tests...$(NC)"
+	@poetry run pytest --lf tests/unit/
+
+test-report: ## Generate detailed test report
+	@echo "$(BLUE)📝 Generating test report...$(NC)"
+	@mkdir -p reports
+	@poetry run pytest tests/unit/ --html=reports/test_report.html --self-contained-html --junitxml=reports/junit.xml
+	@echo "$(GREEN)✅ Test report generated: reports/test_report.html$(NC)"
+
+# Repository setup targets
+setup-repositories: ## Setup repository files and dependencies
+	@echo "$(BLUE)🔧 Setting up repository structure...$(NC)"
+	@mkdir -p app/infrastructure/repositories
+	@mkdir -p tests/unit/repositories
+	@mkdir -p tests/factories
+	@poetry add --group dev pytest-asyncio pytest-mock faker pytest-cov pytest-xdist
+	@echo "$(GREEN)✅ Repository structure ready$(NC)"
+
+# Quality assurance targets
+qa-repositories: ## Run full QA pipeline for repositories
+	@echo "$(BLUE)🔍 Running QA pipeline for repositories...$(NC)"
+	@poetry run black app/infrastructure/repositories/ tests/unit/
+	@poetry run isort app/infrastructure/repositories/ tests/unit/
+	@poetry run flake8 app/infrastructure/repositories/ tests/unit/
+	@poetry run mypy app/infrastructure/repositories/
+	@poetry run bandit -r app/infrastructure/repositories/
+	@poetry run pytest tests/unit/ -k "repository" --cov=app/infrastructure/repositories --cov-report=term-missing
+	@echo "$(GREEN)✅ QA pipeline completed$(NC)"
+
+# Integration targets
+test-integration-repos: db-services-up ## Run integration tests for repositories
+	@echo "$(BLUE)🔗 Running repository integration tests...$(NC)"
+	@sleep 5
+	@poetry run pytest tests/integration/ -k "repository" -v --db-url=$(DB_URL)
+	@echo "$(GREEN)✅ Integration tests completed$(NC)"
+
+# Benchmark targets
+benchmark-repositories: ## Run repository performance benchmarks
+	@echo "$(BLUE)📊 Running repository benchmarks...$(NC)"
+	@poetry run pytest tests/unit/ -k "repository" --benchmark-only --benchmark-sort=mean
+	@echo "$(GREEN)✅ Benchmarks completed$(NC)"
+
+# CI/CD targets
+ci-test-repositories: ## CI pipeline for repository tests
+	@echo "$(BLUE)🚀 Running CI pipeline for repositories...$(NC)"
+	@poetry run pytest tests/unit/ -k "repository" --cov=app/infrastructure/repositories --cov-report=xml --junitxml=reports/junit.xml
+	@echo "$(GREEN)✅ CI pipeline completed$(NC)"
+
+# Documentation targets
+docs-repositories: ## Generate repository documentation
+	@echo "$(BLUE)📚 Generating repository documentation...$(NC)"
+	@poetry run sphinx-apidoc -o docs/source/repositories app/infrastructure/repositories/
+	@echo "$(GREEN)✅ Repository documentation generated$(NC)"
+
+# Cleanup targets
+clean-test-artifacts: ## Clean test artifacts
+	@echo "$(BLUE)🧹 Cleaning test artifacts...$(NC)"
+	@rm -rf .pytest_cache/
+	@rm -rf htmlcov/
+	@rm -rf reports/
+	@rm -rf .coverage
+	@find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+	@find . -name "*.pyc" -delete
+	@echo "$(GREEN)✅ Test artifacts cleaned$(NC)"
+
+# Help target addition
+help-repositories: ## Show repository-specific help
+	@echo "$(BLUE)📋 Repository Testing Commands:$(NC)"
+	@echo ""
+	@echo "  $(GREEN)test-repositories$(NC)      - Run all repository tests"
+	@echo "  $(GREEN)test-incident-repo$(NC)     - Run incident repository tests"
+	@echo "  $(GREEN)test-mlmodel-repo$(NC)      - Run ML model repository tests"
+	@echo "  $(GREEN)test-unit-fast$(NC)         - Run unit tests in parallel"
+	@echo "  $(GREEN)test-coverage$(NC)          - Run tests with coverage report"
+	@echo "  $(GREEN)test-performance$(NC)       - Run performance tests"
+	@echo "  $(GREEN)test-watch$(NC)             - Run tests in watch mode"
+	@echo "  $(GREEN)test-debug$(NC)             - Run tests with debug output"
+	@echo "  $(GREEN)test-failed$(NC)            - Run only failed tests"
+	@echo "  $(GREEN)test-report$(NC)            - Generate detailed test report"
+	@echo "  $(GREEN)setup-repositories$(NC)     - Setup repository structure"
+	@echo "  $(GREEN)qa-repositories$(NC)        - Run full QA pipeline"
+	@echo "  $(GREEN)clean-test-artifacts$(NC)   - Clean test artifacts"
+	@echo ""

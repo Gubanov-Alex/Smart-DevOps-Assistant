@@ -1,6 +1,6 @@
 """Production-ready LogRepository implementation with batch operations and optimization."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -66,7 +66,7 @@ class LogRepository:
                         "source": log.source,
                         "timestamp": log.timestamp,
                         "extra_data": log.metadata,
-                        "created_at": datetime.utcnow(),
+                        "created_at": datetime.now(timezone.utc),
                     }
                     log_data.append(model_data)
 
@@ -171,7 +171,7 @@ class LogRepository:
     ) -> List[LogEntryEntity]:
         """Find logs by multiple levels."""
         try:
-            since_time = datetime.utcnow() - timedelta(minutes=since_minutes)
+            since_time = datetime.now(timezone.utc) - timedelta(minutes=since_minutes)
             level_values = [level.value.upper() for level in levels]
 
             stmt = (
@@ -200,7 +200,7 @@ class LogRepository:
     ) -> int:
         """Count logs by level within time period."""
         try:
-            since_time = datetime.utcnow() - timedelta(minutes=since_minutes)
+            since_time = datetime.now(timezone.utc) - timedelta(minutes=since_minutes)
 
             stmt = select(func.count(LogEntryModel.id)).where(
                 and_(
@@ -221,7 +221,7 @@ class LogRepository:
     async def get_log_statistics(self, since_minutes: int = 60) -> Dict[str, Any]:
         """Get aggregated log statistics for monitoring dashboard."""
         try:
-            since_time = datetime.utcnow() - timedelta(minutes=since_minutes)
+            since_time = datetime.now(timezone.utc) - timedelta(minutes=since_minutes)
 
             # Level distribution query
             level_stats_stmt = (
@@ -259,7 +259,7 @@ class LogRepository:
                     )
                     / max(total_count, 1)
                 ),
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             }
 
             return statistics
@@ -297,7 +297,7 @@ class LogRepository:
     async def delete_old_logs(self, older_than_days: int = 30) -> int:
         """Delete logs older than specified days."""
         try:
-            cutoff_time = datetime.utcnow() - timedelta(days=older_than_days)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(days=older_than_days)
 
             delete_stmt = text(
                 """
