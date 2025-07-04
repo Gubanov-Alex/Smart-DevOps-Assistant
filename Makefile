@@ -622,3 +622,180 @@ help-repositories: ## Show repository-specific help
 	@echo "  $(GREEN)qa-repositories$(NC)        - Run full QA pipeline"
 	@echo "  $(GREEN)clean-test-artifacts$(NC)   - Clean test artifacts"
 	@echo ""
+
+# =============================================================================
+# API DEVELOPMENT COMMANDS (Add to existing Makefile)
+# =============================================================================
+
+run-dev: ## Start development server with auto-reload
+	@echo "$(BLUE)🚀 Starting development server...$(NC)"
+	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --log-level info
+
+run-prod: ## Start production server
+	@echo "$(BLUE)🚀 Starting production server...$(NC)"
+	uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+api-health: ## Check API health status
+	@echo "$(BLUE)🏥 Checking API health...$(NC)"
+	@curl -s http://localhost:8000/api/v1/health | jq '.' || echo "API not running or jq not installed"
+
+api-health-simple: ## Check simple API health
+	@echo "$(BLUE)🏥 Checking simple API health...$(NC)"
+	@curl -s http://localhost:8000/api/v1/health/simple | jq '.' || echo "API not running"
+
+api-info: ## Get API information
+	@echo "$(BLUE)ℹ️  Getting API information...$(NC)"
+	@curl -s http://localhost:8000/api/v1 | jq '.' || echo "API not running"
+
+api-docs: ## Open API documentation in browser
+	@echo "$(BLUE)📚 Opening API documentation...$(NC)"
+	@python -c "import webbrowser; webbrowser.open('http://localhost:8000/docs')"
+
+api-test-endpoints: ## Test all health endpoints
+	@echo "$(BLUE)🧪 Testing API endpoints...$(NC)"
+	@echo "Testing root endpoint:"
+	@curl -s http://localhost:8000/ | jq '.message' || echo "❌ Root endpoint failed"
+	@echo "\nTesting health endpoint:"
+	@curl -s http://localhost:8000/api/v1/health | jq '.status' || echo "❌ Health endpoint failed"
+	@echo "\nTesting simple health:"
+	@curl -s http://localhost:8000/api/v1/health/simple | jq '.status' || echo "❌ Simple health failed"
+	@echo "\nTesting liveness probe:"
+	@curl -s http://localhost:8000/api/v1/health/live | jq '.status' || echo "❌ Liveness probe failed"
+	@echo "\nTesting readiness probe:"
+	@curl -s http://localhost:8000/api/v1/health/ready | jq '.status' || echo "❌ Readiness probe failed"
+
+load-test: ## Run basic load test on health endpoint
+	@echo "$(BLUE)⚡ Running basic load test...$(NC)"
+	@if command -v hey >/dev/null; then \
+		hey -n 100 -c 10 http://localhost:8000/api/v1/health/simple; \
+	elif command -v ab >/dev/null; then \
+		ab -n 100 -c 10 http://localhost:8000/api/v1/health/simple; \
+	else \
+		echo "$(YELLOW)Install 'hey' or 'ab' for load testing$(NC)"; \
+	fi
+
+install-hey: ## Install hey load testing tool
+	@echo "$(BLUE)📦 Installing hey load testing tool...$(NC)"
+	@if [[ "$(shell uname)" == "Darwin" ]]; then \
+		brew install hey; \
+	elif [[ "$(shell uname)" == "Linux" ]]; then \
+		wget -O hey https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64 && \
+		chmod +x hey && sudo mv hey /usr/local/bin/; \
+	else \
+		echo "$(YELLOW)Please install hey manually from https://github.com/rakyll/hey$(NC)"; \
+	fi
+
+check-dependencies: ## Check if all API dependencies are available
+	@echo "$(BLUE)🔍 Checking API dependencies...$(NC)"
+	@python -c "import fastapi; print('✅ FastAPI:', fastapi.__version__)" || echo "❌ FastAPI not installed"
+	@python -c "import pydantic; print('✅ Pydantic:', pydantic.__version__)" || echo "❌ Pydantic not installed"
+	@python -c "import uvicorn; print('✅ Uvicorn:', uvicorn.__version__)" || echo "❌ Uvicorn not installed"
+	@python -c "import structlog; print('✅ Structlog:', structlog.__version__)" || echo "❌ Structlog not installed"
+	@python -c "import psutil; print('✅ Psutil:', psutil.__version__)" || echo "❌ Psutil not installed"
+	@python -c "import sqlalchemy; print('✅ SQLAlchemy:', sqlalchemy.__version__)" || echo "❌ SQLAlchemy not installed"
+
+api-logs: ## Show API logs in real-time
+	@echo "$(BLUE)📋 Showing API logs...$(NC)"
+	@tail -f logs/app/app.log 2>/dev/null || echo "No log file found. Start the API first."
+
+monitor-api: ## Monitor API performance and logs
+	@echo "$(BLUE)📊 Monitoring API (press Ctrl+C to stop)...$(NC)"
+	@while true; do \
+		clear; \
+		echo "=== API Health Status ==="; \
+		curl -s http://localhost:8000/api/v1/health/simple 2>/dev/null | jq '.' || echo "API not responding"; \
+		echo "\n=== System Resources ==="; \
+		echo "Memory: $$(free -h | awk '/^Mem:/ {print $$3 "/" $$2}' 2>/dev/null || echo 'N/A')"; \
+		echo "CPU: $$(top -bn1 | grep "Cpu(s)" | awk '{print $$2}' | cut -d'%' -f1 2>/dev/null || echo 'N/A')%"; \
+		echo "Disk: $$(df -h / | awk 'NR==2 {print $$5}' 2>/dev/null || echo 'N/A')"; \
+		sleep 5; \
+	done
+
+generate-api-client: ## Generate OpenAPI client code
+	@echo "$(BLUE)🔧 Generating API client...$(NC)"
+	@if command -v openapi-generator-cli >/dev/null; then \
+		openapi-generator-cli generate \
+			-i http://localhost:8000/api/v1/openapi.json \
+			-g python \
+			-o clients/python \
+			--additional-properties=packageName=smartdevops_client; \
+	else \
+		echo "$(YELLOW)Install openapi-generator-cli to generate clients$(NC)"; \
+		echo "npm install -g @openapitools/openapi-generator-cli"; \
+	fi
+
+validate-openapi: ## Validate OpenAPI specification
+	@echo "$(BLUE)✅ Validating OpenAPI specification...$(NC)"
+	@if command -v swagger-codegen-cli >/dev/null; then \
+		swagger-codegen-cli validate -i http://localhost:8000/api/v1/openapi.json; \
+	else \
+		echo "$(YELLOW)Install swagger-codegen-cli to validate OpenAPI spec$(NC)"; \
+	fi
+
+# Environment-specific run commands
+run-staging: ## Run with staging configuration
+	@echo "$(BLUE)🚀 Starting staging server...$(NC)"
+	@ENVIRONMENT=staging uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+run-production: ## Run with production configuration
+	@echo "$(BLUE)🚀 Starting production server...$(NC)"
+	@ENVIRONMENT=production uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# API testing shortcuts
+test-health: ## Test health endpoints specifically
+	@echo "$(BLUE)🧪 Testing health endpoints...$(NC)"
+	pytest tests/integration/test_health_endpoints.py -v
+
+test-api: ## Run all API tests
+	@echo "$(BLUE)🧪 Running API tests...$(NC)"
+	pytest tests/integration/ -v --cov=app/api --cov=app/services
+
+# Development workflow
+dev-setup: setup-dirs create-env install ## Complete development setup
+	@echo "$(GREEN)✅ Development environment ready!$(NC)"
+	@echo "Run '$(BLUE)make run-dev$(NC)' to start the API server"
+
+dev-reset: clean install db-reset ## Reset development environment
+	@echo "$(GREEN)✅ Development environment reset!$(NC)"
+
+# Docker API commands
+docker-api: ## Build and run API in Docker
+	@echo "$(BLUE)🐳 Building and running API in Docker...$(NC)"
+	docker build -t smartdevops-api .
+	docker run -p 8000:8000 --env-file .env smartdevops-api
+
+docker-api-logs: ## Show Docker API logs
+	@echo "$(BLUE)📋 Showing Docker API logs...$(NC)"
+	@docker logs -f $$(docker ps -q --filter ancestor=smartdevops-api) 2>/dev/null || echo "No API container running"
+
+# Performance testing
+perf-test: ## Run comprehensive performance tests
+	@echo "$(BLUE)⚡ Running performance tests...$(NC)"
+	@if command -v hey >/dev/null; then \
+		echo "Testing health endpoint:"; \
+		hey -n 1000 -c 50 -t 30 http://localhost:8000/api/v1/health/simple; \
+		echo "\nTesting API info endpoint:"; \
+		hey -n 500 -c 25 -t 30 http://localhost:8000/api/v1; \
+	else \
+		echo "$(YELLOW)Install 'hey' with 'make install-hey' for performance testing$(NC)"; \
+	fi
+
+# Health check variations
+health-json: ## Get health status as formatted JSON
+	@curl -s http://localhost:8000/api/v1/health | jq '.'
+
+health-status: ## Get just the health status
+	@curl -s http://localhost:8000/api/v1/health | jq -r '.status'
+
+health-uptime: ## Get API uptime
+	@curl -s http://localhost:8000/api/v1/health | jq -r '.uptime_seconds'
+
+health-db: ## Get database health status
+	@curl -s http://localhost:8000/api/v1/health | jq '.database'
+
+# Development helpers
+reload-config: ## Reload application configuration
+	@echo "$(BLUE)🔄 Reloading configuration...$(NC)"
+	@echo "Configuration will be reloaded automatically in development mode"
+
+# =============================================================================
