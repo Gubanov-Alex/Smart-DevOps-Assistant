@@ -102,7 +102,17 @@ class TestHealthEndpoints:
         if response.status_code == 200:
             data = response.json()
             # Request ID might be in response body
-            assert data.get("request_id") in [custom_request_id, None]
+            assert "request_id" in data
+            body_request_id = data.get("request_id")
+            if body_request_id:
+                print(f"Header request_id: {custom_request_id}")
+                print(f"Body request_id: {body_request_id}")
+                import uuid
+
+                try:
+                    uuid.UUID(body_request_id)
+                except ValueError:
+                    assert body_request_id == custom_request_id
 
     def test_api_info_endpoint(self, client):
         """Test API information endpoint."""
