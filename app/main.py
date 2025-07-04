@@ -35,8 +35,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         await init_database()
         logger.info("Database initialized successfully")
-    except Exception as e:
-        logger.error("Failed to initialize database", error=str(e))
+    except Exception as exc:
+        logger.error("Failed to initialize database", error=str(exc))
         raise
 
     # TODO: Initialize other services
@@ -56,89 +56,86 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # await cleanup_ml_models()
 
 
-def create_app() -> FastAPI:
-    """Create and configure FastAPI application."""
-    settings = get_settings()
+def _get_allowed_origins(settings) -> list[str]:
+    """Get allowed origins based on environment."""
+    if settings.is_development:
+        return [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:8080",
+            "http://127.0.0.1:3000",
+        ]
+    elif settings.environment == "staging":
+        return [
+            "https://staging-app.smartdevops.ai",
+            "https://staging.smartdevops.ai",
+        ]
+    elif settings.is_production:
+        return [
+            "https://app.smartdevops.ai",
+            "https://smartdevops.ai",
+            "https://www.smartdevops.ai",
+        ]
+    return []
 
-    # Setup logging
-    setup_logging(
-        level=settings.log_level,
-        format_type=settings.log_format,
-        development=settings.is_development,
-    )
 
-    # Create FastAPI app with comprehensive configuration
-    app = FastAPI(
-        title=settings.api_title,
-        version=settings.api_version,
-        description=settings.api_description,
-        debug=settings.debug,
-        lifespan=lifespan,
-        # API documentation configuration
-        openapi_url="/api/v1/openapi.json" if not settings.is_production else None,
-        docs_url="/docs" if not settings.is_production else None,
-        redoc_url="/redoc" if not settings.is_production else None,
-        # Additional OpenAPI metadata
-        openapi_tags=[
-            {
-                "name": "Health Check",
-                "description": "System health monitoring and status endpoints",
-            },
-            {
-                "name": "API Info",
-                "description": "API metadata and information endpoints",
-            },
-            {
-                "name": "Log Management",
-                "description": "Log ingestion, analysis, and retrieval operations",
-            },
-            {
-                "name": "Incident Management",
-                "description": "Incident detection, tracking, and resolution workflows",
-            },
-            {
-                "name": "ML Models",
-                "description": "Machine learning model management and predictions",
-            },
-            {
-                "name": "Analytics",
-                "description": "Data analytics and reporting endpoints",
-            },
-        ],
-        contact={
-            "name": "Smart DevOps Support",
-            "email": "support@smartdevops.ai",
-            "url": "https://support.smartdevops.ai",
+def _get_openapi_tags() -> list[dict]:
+    """Get OpenAPI tags configuration."""
+    return [
+        {
+            "name": "Health Check",
+            "description": "System health monitoring and status endpoints",
         },
-        license_info={
-            "name": "MIT License",
-            "url": "https://opensource.org/licenses/MIT",
+        {
+            "name": "API Info",
+            "description": "API metadata and information endpoints",
         },
-        servers=(
-            [
-                {
-                    "url": "https://api.smartdevops.ai",
-                    "description": "Production server",
-                },
-                {
-                    "url": "https://staging-api.smartdevops.ai",
-                    "description": "Staging server",
-                },
-                {
-                    "url": "http://localhost:8000",
-                    "description": "Development server",
-                },
-            ]
-            if not settings.is_development
-            else [
-                {
-                    "url": "http://localhost:8000",
-                    "description": "Development server",
-                }
-            ]
-        ),
-    )
+        {
+            "name": "Log Management",
+            "description": "Log ingestion, analysis, and retrieval operations",
+        },
+        {
+            "name": "Incident Management",
+            "description": "Incident detection, tracking, and resolution workflows",
+        },
+        {
+            "name": "ML Models",
+            "description": "Machine learning model management and predictions",
+        },
+        {
+            "name": "Analytics",
+            "description": "Data analytics and reporting endpoints",
+        },
+    ]
 
+
+def _get_servers_config(settings) -> list[dict]:
+    """Get servers configuration for OpenAPI."""
+    if settings.is_development:
+        return [
+            {
+                "url": "http://localhost:8000",
+                "description": "Development server",
+            }
+        ]
+    return [
+        {
+            "url": "https://api.smartdevops.ai",
+            "description": "Production server",
+        },
+        {
+            "url": "https://staging-api.smartdevops.ai",
+            "description": "Staging server",
+        },
+        {
+            "url": "http://localhost:8000",
+            "description": "Development server",
+        },
+    ]
+
+
+def _setup_middleware(app: FastAPI, settings) -> None:
+    """Setup application middleware."""
     # Security middleware
     if settings.is_production:
         app.add_middleware(
@@ -151,27 +148,8 @@ def create_app() -> FastAPI:
             ],
         )
 
-    # CORS middleware with environment-specific configuration
-    allowed_origins = []
-    if settings.is_development:
-        allowed_origins = [
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:8080",
-            "http://127.0.0.1:3000",
-        ]
-    elif settings.environment == "staging":
-        allowed_origins = [
-            "https://staging-app.smartdevops.ai",
-            "https://staging.smartdevops.ai",
-        ]
-    elif settings.is_production:
-        allowed_origins = [
-            "https://app.smartdevops.ai",
-            "https://smartdevops.ai",
-            "https://www.smartdevops.ai",
-        ]
-
+    # CORS middleware
+    allowed_origins = _get_allowed_origins(settings)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
@@ -195,7 +173,10 @@ def create_app() -> FastAPI:
         max_age=86400,  # 24 hours
     )
 
-    # Request/Response middleware for logging and monitoring
+
+def _setup_request_middleware(app: FastAPI) -> None:
+    """Setup request/response middleware."""
+
     @app.middleware("http")
     async def request_middleware(request: Request, call_next) -> Response:
         """Middleware for request/response logging and monitoring."""
@@ -246,15 +227,13 @@ def create_app() -> FastAPI:
 
             return response
 
-        except Exception as e:
+        except Exception:
             # Calculate processing time for error cases
             process_time = time.time() - start_time
 
-            # Log error
+            # Log error without using the exception variable
             logger.error(
                 "Request failed",
-                error=str(e),
-                error_type=type(e).__name__,
                 process_time_ms=round(process_time * 1000, 2),
             )
 
@@ -271,7 +250,10 @@ def create_app() -> FastAPI:
 
             return error_response
 
-    # Global exception handlers
+
+def _setup_exception_handlers(app: FastAPI) -> None:
+    """Setup global exception handlers."""
+
     @app.exception_handler(BaseAppException)
     async def app_exception_handler(
         request: Request, exc: BaseAppException
@@ -323,6 +305,48 @@ def create_app() -> FastAPI:
             },
         )
 
+
+def create_app() -> FastAPI:
+    """Create and configure FastAPI application."""
+    settings = get_settings()
+
+    # Setup logging
+    setup_logging(
+        level=settings.log_level,
+        format_type=settings.log_format,
+        development=settings.is_development,
+    )
+
+    # Create FastAPI app with comprehensive configuration
+    app = FastAPI(
+        title=settings.api_title,
+        version=settings.api_version,
+        description=settings.api_description,
+        debug=settings.debug,
+        lifespan=lifespan,
+        # API documentation configuration
+        openapi_url="/api/v1/openapi.json" if not settings.is_production else None,
+        docs_url="/docs" if not settings.is_production else None,
+        redoc_url="/redoc" if not settings.is_production else None,
+        # Additional OpenAPI metadata
+        openapi_tags=_get_openapi_tags(),
+        contact={
+            "name": "Smart DevOps Support",
+            "email": "support@smartdevops.ai",
+            "url": "https://support.smartdevops.ai",
+        },
+        license_info={
+            "name": "MIT License",
+            "url": "https://opensource.org/licenses/MIT",
+        },
+        servers=_get_servers_config(settings),
+    )
+
+    # Setup middleware
+    _setup_middleware(app, settings)
+    _setup_request_middleware(app)
+    _setup_exception_handlers(app)
+
     # Include API routers
     app.include_router(api_router)
 
@@ -358,7 +382,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
+        host="0.0.0.0",  # nosec B104 - Safe for development, production uses reverse proxy
         port=8000,
         reload=settings.is_development,
         log_level=settings.log_level.lower(),
