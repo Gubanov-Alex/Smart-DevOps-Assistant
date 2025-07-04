@@ -169,8 +169,6 @@ def _get_system_metrics(include_details: bool) -> SystemMetrics:
 def _get_database_health() -> DatabaseHealth:
     """Get database health with error handling."""
     try:
-        from app.database.session import db_manager
-
         # Note: This would need to be made async in real implementation
         # For now, we'll use a placeholder check
         return DatabaseHealth(
