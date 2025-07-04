@@ -1,86 +1,158 @@
-"""Application configuration management with Pydantic v2."""
+"""Database configuration and settings."""
 
 from functools import lru_cache
-from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
+from pydantic_settings import BaseSettings
+
+
+class DatabaseCompatibility:
+    """Compatibility wrapper for database settings."""
+
+    def __init__(self, settings_instance):
+        self._settings = settings_instance
+
+    @property
+    def database_url(self):
+        return self._settings.database_url
+
+    @property
+    def database_url_sync(self):
+        return self._settings.database_url_sync
+
+    @property
+    def pool_size(self):
+        return self._settings.pool_size
+
+    @property
+    def max_overflow(self):
+        return self._settings.max_overflow
+
+    @property
+    def pool_timeout(self):
+        return self._settings.pool_timeout
+
+    @property
+    def pool_recycle(self):
+        return self._settings.pool_recycle
+
+    @property
+    def pool_pre_ping(self):
+        return self._settings.pool_pre_ping
+
+    @property
+    def query_timeout(self):
+        return self._settings.query_timeout
+
+    @property
+    def statement_timeout(self):
+        return self._settings.statement_timeout
+
+    @property
+    def echo_sql(self):
+        return self._settings.echo_sql
+
+    @property
+    def echo_pool(self):
+        return self._settings.echo_pool
 
 
 class Settings(BaseSettings):
-    """Application settings with environment variable support."""
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-        case_sensitive=False,
-    )
+    """Application settings."""
 
     # Environment
-    environment: Literal["development", "testing", "production"] = "development"
-    debug: bool = Field(default=False, description="Enable debug mode")
-
-    # API Settings
-    api_title: str = "Smart DevOps Assistant"
-    api_version: str = "0.1.0"
-    api_description: str = "AI-powered DevOps assistant for log analysis and anomaly detection"
-
-    # Database
-    database_url: PostgresDsn = Field(
-        default="postgresql+asyncpg://devops_user:devops_pass@localhost:5432/devops_assistant",
-        description="PostgreSQL database URL",
-    )
-    database_echo: bool = Field(default=False, description="Echo SQL queries")
-
-    # Redis
-    redis_url: RedisDsn = Field(
-        default="redis://localhost:6379/0", description="Redis URL for caching"
+    environment: str = Field(
+        default="development", description="Application environment"
     )
 
-    # Celery
-    celery_broker_url: RedisDsn = Field(
-        default="redis://localhost:6379/1", description="Celery broker URL"
-    )
-    celery_result_backend: RedisDsn = Field(
-        default="redis://localhost:6379/1", description="Celery result backend URL"
-    )
-
-    # Security
-    secret_key: str = Field(
-        default="super-secret-key-change-in-production", description="Secret key for JWT tokens"
-    )
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-
-    # ML Models
-    model_path: str = Field(default="./models", description="Path to ML models")
-    batch_size: int = Field(default=32, description="Batch size for ML inference")
-
-    # Logging
+    # App configuration
+    app_name: str = "Smart DevOps Assistant"
+    debug: bool = Field(default=False, description="Debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
-    log_format: str = "json"
+    log_format: str = Field(default="json", description="Log format: json or console")
 
-    # Health Check
-    health_check_timeout: int = Field(default=30, description="Health check timeout in seconds")
+    # API settings
+    api_title: str = Field(default="Smart DevOps Assistant", description="API title")
+    api_version: str = Field(default="0.1.0", description="API version")
+    api_description: str = Field(
+        default="AI-powered DevOps monitoring", description="API description"
+    )
+
+    # Database settings
+    database_url: str = Field(
+        default="postgresql+asyncpg://devops_user:devops_pass@localhost:5433/devops_assistant",
+        description="Async database URL for PostgreSQL",
+    )
+    database_url_sync: str = Field(
+        default="postgresql://devops_user:devops_pass@localhost:5433/devops_assistant",
+        description="Sync database URL for migrations",
+    )
+
+    # Redis settings for caching and events
+    redis_url: str = Field(
+        default="redis://localhost:6380/0", description="Redis connection URL"
+    )
+
+    # Security settings
+    secret_key: str = Field(
+        default="dev-secret-key-change-in-production",
+        description="Secret key for JWT tokens",
+    )
+
+    # API settings
+    api_v1_prefix: str = "/api/v1"
+    cors_origins: list[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8000"],
+        description="CORS allowed origins",
+    )
+
+    # Database pool settings
+    pool_size: int = Field(default=10, description="Database connection pool size")
+    max_overflow: int = Field(
+        default=20, description="Max connections beyond pool size"
+    )
+    pool_timeout: int = Field(
+        default=30, description="Pool checkout timeout in seconds"
+    )
+    pool_recycle: int = Field(
+        default=3600, description="Connection recycle time in seconds"
+    )
+    pool_pre_ping: bool = Field(
+        default=True, description="Validate connections before use"
+    )
+
+    # Query settings
+    query_timeout: int = Field(default=30, description="Query timeout in seconds")
+    statement_timeout: str = Field(
+        default="30s", description="PostgreSQL statement timeout"
+    )
+
+    # Development settings
+    echo_sql: bool = Field(default=False, description="Log all SQL statements")
+    echo_pool: bool = Field(default=False, description="Log connection pool events")
 
     @property
     def is_development(self) -> bool:
-        """Check if running in development mode."""
-        return self.environment == "development"
+        """Check if environment is development or testing."""
+        return self.environment.lower() in ["development", "testing", "dev", "test"]
 
     @property
     def is_production(self) -> bool:
-        """Check if running in production mode."""
-        return self.environment == "production"
+        """Check if environment is production."""
+        return self.environment.lower() in ["production", "prod"]
 
-    @property
-    def is_testing(self) -> bool:
-        """Check if running in testing mode."""
-        return self.environment == "testing"
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+        arbitrary_types_allowed = True
+        extra = "allow"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        object.__setattr__(self, "database", DatabaseCompatibility(self))
 
 
-@lru_cache
+@lru_cache()
 def get_settings() -> Settings:
-    """Get cached application settings."""
+    """Get application settings with caching."""
     return Settings()

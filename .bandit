@@ -1,0 +1,32 @@
+# .bandit - YAML configuration for bandit security scanner
+exclude_dirs:
+  - '*/tests/*'
+  - '*/migrations/*'
+  - '*/venv/*'
+  - '*/.venv/*'
+  - '*/node_modules/*'
+  - '*/build/*'
+  - '*/dist/*'
+
+# Confidence levels: low, medium, high
+confidence: medium
+
+# Severity levels: low, medium, high  
+severity: medium
+
+# Tests to skip (uncomment and add specific test IDs if needed)
+# skips:
+#   - B101  # assert_used
+#   - B601  # paramiko_calls
+
+# Specific tests to run (comment out to run all)
+# tests:
+#   - B301  # pickle usage
+#   - B614  # pytorch unsafe load
+
+# Additional settings
+recursive: true
+aggregate: json
+
+# Baseline file for comparison (uncomment to use)
+# baseline: .bandit-baseline.json

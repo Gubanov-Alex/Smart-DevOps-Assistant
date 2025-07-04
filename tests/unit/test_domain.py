@@ -4,7 +4,11 @@ from uuid import uuid4
 
 import pytest
 
-from app.domain.repositories import IIncidentRepository, ILogRepository, IMLModelRepository
+from app.domain.repositories import (
+    IIncidentRepository,
+    ILogRepository,
+    IMLModelRepository,
+)
 
 
 class TestRepositoryInterfaces:

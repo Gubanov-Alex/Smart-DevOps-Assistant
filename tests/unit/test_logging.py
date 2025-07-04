@@ -83,7 +83,14 @@ class MetricValue:
             raise ValueError("Metric name cannot be empty")
 
         # Allow negative values for certain metric types
-        negative_allowed_types = ["temperature", "balance", "change", "delta", "diff", "offset"]
+        negative_allowed_types = [
+            "temperature",
+            "balance",
+            "change",
+            "delta",
+            "diff",
+            "offset",
+        ]
 
         if self.value < 0 and not any(
             allowed_type in self.name.lower() for allowed_type in negative_allowed_types
@@ -126,7 +133,11 @@ class MetricValue:
         """String representation with formatting."""
         if self.is_percentage():
             return f"{self.value:.1f}%"
-        elif self.is_time_based and self.value < 1 and self.unit.lower() in ["seconds", "s"]:
+        elif (
+            self.is_time_based
+            and self.value < 1
+            and self.unit.lower() in ["seconds", "s"]
+        ):
             return f"{self.value * 1000:.0f}ms"
         else:
             return f"{self.value}{self.unit}"
@@ -150,7 +161,9 @@ class SourceSystem:
 
         valid_environments = ["development", "staging", "production", "test", "local"]
         if self.environment.lower() not in valid_environments:
-            raise ValueError(f"Environment must be one of: {', '.join(valid_environments)}")
+            raise ValueError(
+                f"Environment must be one of: {', '.join(valid_environments)}"
+            )
 
         # Convert tags to tuple if it's a list
         if isinstance(self.tags, list):

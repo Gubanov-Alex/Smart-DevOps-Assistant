@@ -71,7 +71,6 @@ Thumbs.db
 logs/
 *.log
 data/
-models/
 artifacts/
 mlruns/
 .mlflow/
@@ -122,4 +121,4 @@ site/
 
 # Local configuration overrides
 local_settings.py
-.local/
+.local/!/.bandit

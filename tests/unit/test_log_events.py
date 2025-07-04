@@ -30,7 +30,9 @@ class TestLogEvents:
             tags=["test", "error"],
         )
 
-        assert event.aggregate_id == log_id  # Should match since __post_init__ sets it to log_id
+        assert (
+            event.aggregate_id == log_id
+        )  # Should match since __post_init__ sets it to log_id
         assert event.log_id == log_id
         assert event.message == "Test log message"
         assert event.level == LogLevel.ERROR
@@ -51,7 +53,9 @@ class TestLogEvents:
             processing_time_ms=150,
         )
 
-        assert event.aggregate_id == log_id  # Should match since __post_init__ sets it to log_id
+        assert (
+            event.aggregate_id == log_id
+        )  # Should match since __post_init__ sets it to log_id
         assert event.log_id == log_id
         assert event.predicted_level == LogLevel.WARNING
         assert event.confidence == 0.95
