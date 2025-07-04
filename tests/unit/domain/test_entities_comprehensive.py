@@ -165,7 +165,10 @@ class TestLogEntry:
         """Test LogEntry creation with auto-generated fields."""
         now = datetime.now(timezone.utc)
         log = LogEntry(
-            message="Test message", timestamp=now, level=LogLevel.INFO, source="test_source"
+            message="Test message",
+            timestamp=now,
+            level=LogLevel.INFO,
+            source="test_source",
         )
 
         assert log.message == "Test message"
@@ -191,7 +194,10 @@ class TestLogEntry:
     def test_log_entry_immutability(self):
         """Test LogEntry is immutable (frozen dataclass)."""
         log = LogEntry(
-            message="Test", timestamp=datetime.now(timezone.utc), level=LogLevel.INFO, source="test"
+            message="Test",
+            timestamp=datetime.now(timezone.utc),
+            level=LogLevel.INFO,
+            source="test",
         )
 
         with pytest.raises(FrozenInstanceError):
@@ -234,11 +240,19 @@ class TestLogEntry:
         timestamp = datetime.now(timezone.utc)
 
         log1 = LogEntry(
-            message="Test", timestamp=timestamp, level=LogLevel.INFO, source="test", id=log_id
+            message="Test",
+            timestamp=timestamp,
+            level=LogLevel.INFO,
+            source="test",
+            id=log_id,
         )
 
         log2 = LogEntry(
-            message="Test", timestamp=timestamp, level=LogLevel.INFO, source="test", id=log_id
+            message="Test",
+            timestamp=timestamp,
+            level=LogLevel.INFO,
+            source="test",
+            id=log_id,
         )
 
         assert log1 == log2
@@ -249,7 +263,10 @@ class TestLogEntry:
 
         for level in LogLevel:
             log = LogEntry(
-                message=f"Test {level.value}", timestamp=timestamp, level=level, source="test"
+                message=f"Test {level.value}",
+                timestamp=timestamp,
+                level=level,
+                source="test",
             )
             assert log.level == level
 
@@ -356,7 +373,10 @@ class TestEdgeCases:
         # Naive timestamp (no timezone)
         naive_time = datetime.now()
         log_naive = LogEntry(
-            message="Naive test", timestamp=naive_time, level=LogLevel.INFO, source="test"
+            message="Naive test",
+            timestamp=naive_time,
+            level=LogLevel.INFO,
+            source="test",
         )
 
         assert log_utc.timestamp.tzinfo is not None
