@@ -98,7 +98,7 @@ class MLModelRepository:
                         MLModelModel.status.in_(
                             [ModelStatus.TRAINED.value, ModelStatus.DEPLOYED.value]
                         ),
-                        MLModelModel.is_active == True,
+                        MLModelModel.is_active is True,
                     )
                 )
                 .order_by(
@@ -162,7 +162,7 @@ class MLModelRepository:
                 select(MLModelModel)
                 .where(
                     and_(
-                        MLModelModel.is_active == True,
+                        MLModelModel.is_active is True,
                         MLModelModel.status.in_(
                             [ModelStatus.TRAINED.value, ModelStatus.DEPLOYED.value]
                         ),
@@ -299,7 +299,7 @@ class MLModelRepository:
             # Count by status
             status_stmt = (
                 select(MLModelModel.status, func.count(MLModelModel.id).label("count"))
-                .where(MLModelModel.is_active == True)
+                .where(MLModelModel.is_active is True)
                 .group_by(MLModelModel.status)
             )
 
@@ -308,7 +308,7 @@ class MLModelRepository:
                 select(
                     MLModelModel.model_type, func.count(MLModelModel.id).label("count")
                 )
-                .where(MLModelModel.is_active == True)
+                .where(MLModelModel.is_active is True)
                 .group_by(MLModelModel.model_type)
             )
 
@@ -321,7 +321,7 @@ class MLModelRepository:
                 ),
             ).where(
                 and_(
-                    MLModelModel.is_active == True,
+                    MLModelModel.is_active is True,
                     MLModelModel.status.in_(
                         [ModelStatus.TRAINED.value, ModelStatus.DEPLOYED.value]
                     ),
