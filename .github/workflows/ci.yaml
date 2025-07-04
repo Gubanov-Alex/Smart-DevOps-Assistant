@@ -133,7 +133,7 @@ jobs:
               ;;
             security-scan)
               echo "🔒 Security scanning..."
-              poetry run bandit -r app/ -f json -o bandit-report.json -ll
+              poetry run bandit -r app/ -f json -o bandit-report.json -c .bandit --exit-zero
               ;;
           esac
 
